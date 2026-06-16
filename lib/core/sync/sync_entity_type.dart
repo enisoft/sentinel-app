@@ -1,0 +1,4 @@
+enum SyncEntityType {
+  occurrence,
+  checkIn,
+}
