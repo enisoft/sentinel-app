@@ -1,0 +1,6 @@
+{
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#7535eb", // Grafite escuro
+        "statusBar.foreground": "#ffffff"
+    }
+}
