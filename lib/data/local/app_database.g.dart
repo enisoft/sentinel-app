@@ -1361,6 +1361,17 @@ class $OccurrenceMediaTable extends OccurrenceMedia
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _contentHashMeta = const VerificationMeta(
+    'contentHash',
+  );
+  @override
+  late final GeneratedColumn<String> contentHash = GeneratedColumn<String>(
+    'content_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1373,6 +1384,7 @@ class $OccurrenceMediaTable extends OccurrenceMedia
     durationSeconds,
     sortOrder,
     originalName,
+    contentHash,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1462,6 +1474,15 @@ class $OccurrenceMediaTable extends OccurrenceMedia
         ),
       );
     }
+    if (data.containsKey('content_hash')) {
+      context.handle(
+        _contentHashMeta,
+        contentHash.isAcceptableOrUnknown(
+          data['content_hash']!,
+          _contentHashMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1511,6 +1532,10 @@ class $OccurrenceMediaTable extends OccurrenceMedia
         DriftSqlType.string,
         data['${effectivePrefix}original_name'],
       ),
+      contentHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_hash'],
+      ),
     );
   }
 
@@ -1532,6 +1557,7 @@ class OccurrenceMediaData extends DataClass
   final int? durationSeconds;
   final int sortOrder;
   final String? originalName;
+  final String? contentHash;
   const OccurrenceMediaData({
     required this.id,
     required this.occurrenceId,
@@ -1543,6 +1569,7 @@ class OccurrenceMediaData extends DataClass
     this.durationSeconds,
     required this.sortOrder,
     this.originalName,
+    this.contentHash,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1564,6 +1591,9 @@ class OccurrenceMediaData extends DataClass
     map['sort_order'] = Variable<int>(sortOrder);
     if (!nullToAbsent || originalName != null) {
       map['original_name'] = Variable<String>(originalName);
+    }
+    if (!nullToAbsent || contentHash != null) {
+      map['content_hash'] = Variable<String>(contentHash);
     }
     return map;
   }
@@ -1588,6 +1618,9 @@ class OccurrenceMediaData extends DataClass
       originalName: originalName == null && nullToAbsent
           ? const Value.absent()
           : Value(originalName),
+      contentHash: contentHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contentHash),
     );
   }
 
@@ -1607,6 +1640,7 @@ class OccurrenceMediaData extends DataClass
       durationSeconds: serializer.fromJson<int?>(json['durationSeconds']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       originalName: serializer.fromJson<String?>(json['originalName']),
+      contentHash: serializer.fromJson<String?>(json['contentHash']),
     );
   }
   @override
@@ -1623,6 +1657,7 @@ class OccurrenceMediaData extends DataClass
       'durationSeconds': serializer.toJson<int?>(durationSeconds),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'originalName': serializer.toJson<String?>(originalName),
+      'contentHash': serializer.toJson<String?>(contentHash),
     };
   }
 
@@ -1637,6 +1672,7 @@ class OccurrenceMediaData extends DataClass
     Value<int?> durationSeconds = const Value.absent(),
     int? sortOrder,
     Value<String?> originalName = const Value.absent(),
+    Value<String?> contentHash = const Value.absent(),
   }) => OccurrenceMediaData(
     id: id ?? this.id,
     occurrenceId: occurrenceId ?? this.occurrenceId,
@@ -1650,6 +1686,7 @@ class OccurrenceMediaData extends DataClass
         : this.durationSeconds,
     sortOrder: sortOrder ?? this.sortOrder,
     originalName: originalName.present ? originalName.value : this.originalName,
+    contentHash: contentHash.present ? contentHash.value : this.contentHash,
   );
   OccurrenceMediaData copyWithCompanion(OccurrenceMediaCompanion data) {
     return OccurrenceMediaData(
@@ -1671,6 +1708,9 @@ class OccurrenceMediaData extends DataClass
       originalName: data.originalName.present
           ? data.originalName.value
           : this.originalName,
+      contentHash: data.contentHash.present
+          ? data.contentHash.value
+          : this.contentHash,
     );
   }
 
@@ -1686,7 +1726,8 @@ class OccurrenceMediaData extends DataClass
           ..write('sizeBytes: $sizeBytes, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('originalName: $originalName')
+          ..write('originalName: $originalName, ')
+          ..write('contentHash: $contentHash')
           ..write(')'))
         .toString();
   }
@@ -1703,6 +1744,7 @@ class OccurrenceMediaData extends DataClass
     durationSeconds,
     sortOrder,
     originalName,
+    contentHash,
   );
   @override
   bool operator ==(Object other) =>
@@ -1717,7 +1759,8 @@ class OccurrenceMediaData extends DataClass
           other.sizeBytes == this.sizeBytes &&
           other.durationSeconds == this.durationSeconds &&
           other.sortOrder == this.sortOrder &&
-          other.originalName == this.originalName);
+          other.originalName == this.originalName &&
+          other.contentHash == this.contentHash);
 }
 
 class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
@@ -1731,6 +1774,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
   final Value<int?> durationSeconds;
   final Value<int> sortOrder;
   final Value<String?> originalName;
+  final Value<String?> contentHash;
   final Value<int> rowid;
   const OccurrenceMediaCompanion({
     this.id = const Value.absent(),
@@ -1743,6 +1787,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
     this.durationSeconds = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.originalName = const Value.absent(),
+    this.contentHash = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OccurrenceMediaCompanion.insert({
@@ -1756,6 +1801,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
     this.durationSeconds = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.originalName = const Value.absent(),
+    this.contentHash = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        occurrenceId = Value(occurrenceId),
@@ -1773,6 +1819,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
     Expression<int>? durationSeconds,
     Expression<int>? sortOrder,
     Expression<String>? originalName,
+    Expression<String>? contentHash,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1786,6 +1833,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (originalName != null) 'original_name': originalName,
+      if (contentHash != null) 'content_hash': contentHash,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1801,6 +1849,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
     Value<int?>? durationSeconds,
     Value<int>? sortOrder,
     Value<String?>? originalName,
+    Value<String?>? contentHash,
     Value<int>? rowid,
   }) {
     return OccurrenceMediaCompanion(
@@ -1814,6 +1863,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
       durationSeconds: durationSeconds ?? this.durationSeconds,
       sortOrder: sortOrder ?? this.sortOrder,
       originalName: originalName ?? this.originalName,
+      contentHash: contentHash ?? this.contentHash,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1851,6 +1901,9 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
     if (originalName.present) {
       map['original_name'] = Variable<String>(originalName.value);
     }
+    if (contentHash.present) {
+      map['content_hash'] = Variable<String>(contentHash.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1870,6 +1923,7 @@ class OccurrenceMediaCompanion extends UpdateCompanion<OccurrenceMediaData> {
           ..write('durationSeconds: $durationSeconds, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('originalName: $originalName, ')
+          ..write('contentHash: $contentHash, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3353,6 +3407,7 @@ typedef $$OccurrenceMediaTableCreateCompanionBuilder =
       Value<int?> durationSeconds,
       Value<int> sortOrder,
       Value<String?> originalName,
+      Value<String?> contentHash,
       Value<int> rowid,
     });
 typedef $$OccurrenceMediaTableUpdateCompanionBuilder =
@@ -3367,6 +3422,7 @@ typedef $$OccurrenceMediaTableUpdateCompanionBuilder =
       Value<int?> durationSeconds,
       Value<int> sortOrder,
       Value<String?> originalName,
+      Value<String?> contentHash,
       Value<int> rowid,
     });
 
@@ -3460,6 +3516,11 @@ class $$OccurrenceMediaTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$OccurrencesTableFilterComposer get occurrenceId {
     final $$OccurrencesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -3538,6 +3599,11 @@ class $$OccurrenceMediaTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$OccurrencesTableOrderingComposer get occurrenceId {
     final $$OccurrencesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -3601,6 +3667,11 @@ class $$OccurrenceMediaTableAnnotationComposer
 
   GeneratedColumn<String> get originalName => $composableBuilder(
     column: $table.originalName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
     builder: (column) => column,
   );
 
@@ -3668,6 +3739,7 @@ class $$OccurrenceMediaTableTableManager
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<String?> originalName = const Value.absent(),
+                Value<String?> contentHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OccurrenceMediaCompanion(
                 id: id,
@@ -3680,6 +3752,7 @@ class $$OccurrenceMediaTableTableManager
                 durationSeconds: durationSeconds,
                 sortOrder: sortOrder,
                 originalName: originalName,
+                contentHash: contentHash,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -3694,6 +3767,7 @@ class $$OccurrenceMediaTableTableManager
                 Value<int?> durationSeconds = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<String?> originalName = const Value.absent(),
+                Value<String?> contentHash = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OccurrenceMediaCompanion.insert(
                 id: id,
@@ -3706,6 +3780,7 @@ class $$OccurrenceMediaTableTableManager
                 durationSeconds: durationSeconds,
                 sortOrder: sortOrder,
                 originalName: originalName,
+                contentHash: contentHash,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
