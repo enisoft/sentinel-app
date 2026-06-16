@@ -70,6 +70,7 @@ class OccurrenceRepository {
     int? durationSeconds,
     int sortOrder = 0,
     String? originalName,
+    String? contentHash,
     String? id,
     String? remotePath,
   }) async {
@@ -86,6 +87,7 @@ class OccurrenceRepository {
             sizeBytes: Value(sizeBytes),
             durationSeconds: Value(durationSeconds),
             originalName: Value(originalName),
+            contentHash: Value(contentHash),
             remotePath: Value(remotePath),
           ),
         );
@@ -102,6 +104,33 @@ class OccurrenceRepository {
           ..where((t) => t.occurrenceId.equals(occurrenceId))
           ..orderBy([(t) => OrderingTerm.asc(t.sortOrder)]))
         .get();
+  }
+
+  Future<Occurrence> updateDraft({
+    required String id,
+    String? categoryId,
+    String? observableId,
+    String? description,
+    String? title,
+    String? status,
+  }) async {
+    await _requireOccurrence(id);
+
+    final companion = OccurrencesCompanion(
+      categoryId: categoryId != null ? Value(categoryId) : const Value.absent(),
+      observableId:
+          observableId != null ? Value(observableId) : const Value.absent(),
+      description: description != null ? Value(description) : const Value.absent(),
+      title: title != null ? Value(title) : const Value.absent(),
+      status: status != null ? Value(status) : const Value.absent(),
+      updatedAt: Value(DateTime.now().toUtc()),
+    );
+
+    await (_db.update(_db.occurrences)..where((t) => t.id.equals(id))).write(
+          companion,
+        );
+
+    return _requireOccurrence(id);
   }
 
   Future<int> countMedia(String occurrenceId) async {

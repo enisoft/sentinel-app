@@ -21,7 +21,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -34,6 +34,9 @@ class AppDatabase extends _$AppDatabase {
             await m.deleteTable('check_ins');
             await m.deleteTable('occurrences');
             await m.createAll();
+          }
+          if (from < 3) {
+            await m.addColumn(occurrenceMedia, occurrenceMedia.contentHash);
           }
         },
       );

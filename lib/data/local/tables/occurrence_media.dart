@@ -14,6 +14,7 @@ class OccurrenceMedia extends Table {
   IntColumn get durationSeconds => integer().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   TextColumn get originalName => text().nullable()();
+  TextColumn get contentHash => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

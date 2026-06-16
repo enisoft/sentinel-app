@@ -1,46 +1,45 @@
-# Última tarefa executada — Serialização local → payload de sync
+# Última tarefa executada — E9 fase 1: shell capture-first (sem câmera/GPS reais)
 
-Pedido: camada de SERIALIZAÇÃO local → payload de sync, aderente ao contrato
-(`docs/sentinel-api-app.md`, `sentinel-backend/STATUS_PROJETO.md`). Escopo fechado:
-sem HTTP/TUS, sem câmera, sem rede real — tudo continua atrás da interface
-`SyncGateway`. Fechar 2 divergências do audit: `created_at` de domínio em
-`occurrences` e mapeamento `remotePath`→`path` na serialização; remover
-`mediaUploadedAt` órfão de `check_ins`.
+Pedido: interfaces abstratas (`CameraSource`, `LocationSource`, `HashService`) + fakes
+em memória + UI shell capture-first. Câmera/GPS/hash reais ficam para fase 2 (device).
+Escopo fechado: sem `camera`/`geolocator`/`permission_handler` no pubspec ou código.
 
-Data: 2026-06-14
+Data: 2026-06-15
 
 ## O que foi feito
 
-### 1. Correções de schema (drift v2)
+### 1. Interfaces (contrato, sem implementação real)
 
-- **`occurrences`**: campo de domínio `createdAt` (`created_at` no SQLite),
-  populado na criação do registro (distinto de `createdLocalAt` da fila).
-- **`check_ins`**: removido `mediaUploadedAt` (check-in não tem pipeline de mídia).
-- **Migration** v1→v2: recria tabelas (fundação pré-produção).
+- **`CameraSource`** (`lib/domain/services/camera_source.dart`) — `capture()` → `CaptureResult` (caminho local + metadados).
+- **`LocationSource`** (`lib/domain/services/location_source.dart`) — `getCurrentPosition()` → `GeoFix` (lat/lng/accuracy).
+- **`HashService`** (`lib/domain/services/hash_service.dart`) — `hashFile()` → SHA-256 (contrato; fake determinístico nesta fase).
+- Modelos: `CaptureResult`, `GeoFix` em `lib/domain/models/`.
 
-### 2. Serialização para o contrato
+### 2. Fakes em memória
 
-- **`SyncPayloadSerializer`** (`lib/data/sync/sync_payload_serializer.dart`):
-  - `serializeOccurrencesSyncPayload` / `serializeOccurrence` — POST
-    `/occurrences/sync`: nomes snake_case do contrato, `path` ← `remotePath`,
-    `created_at`/`updated_at` de domínio, exclusão de `reported_by`, `assigned_to`,
-    `synced_at` e campos da fila/local (`local_path`, `sync_state`, etc.).
-  - `serializeCheckInsSyncPayload` / `serializeCheckIn` — POST `/check-ins/sync`
-    (contrato P4): `id`, `latitude`, `longitude`, `accuracy`, `captured_at`, `note`;
-    sem `user_id` nem campos de fila.
-  - `toContractIso8601` — timestamps UTC sem fração de segundo (ex. `…T14:35:00Z`).
+- `FakeCameraSource`, `FakeLocationSource`, `FakeHashService` em `lib/data/fakes/`.
+- Registrados no DI (`lib/app/di.dart`) para app e testes.
 
-### 3. Repositório
+### 3. Orquestração capture-first
 
-- `OccurrenceRepository.createOccurrence` — aceita `createdAt` opcional; default = momento da criação.
-- `OccurrenceRepository.getMedia` — lista mídias ordenadas por `sortOrder`.
+- **`CaptureOccurrenceService`** (`lib/data/services/capture_occurrence_service.dart`):
+  - Disparo → captura + GPS + hash → rascunho em `local_saved` com mídia anexada.
+  - Form atualiza rascunho (`updateDraftForm`).
+  - Confirmar → `status: pending`, permanece em `local_saved` (fila da fundação).
+- **`OccurrenceRepository.updateDraft`** — atualização parcial de campos do form.
+- **`occurrence_media.content_hash`** — coluna nova (schema v3) para hash na captura.
 
-### 4. Testes (sem rede)
+### 4. UI shell (presentation/)
 
-- Ocorrência com 2 mídias → JSON bate com contrato P3 (nomes, `path`, `created_at`,
-  ausência de campos server-only).
-- Check-in → aderência ao contrato P4.
-- 16 testes anteriores mantidos (+ 2 novos = **18**).
+- **`CaptureHomeScreen`** — home = tela de captura (placeholder); botão dispara fake.
+- **`OccurrenceDraftFormScreen`** — form pós-captura (categoria, observável, nota); nunca bloqueia o disparo.
+- `main.dart` aponta para `CaptureHomeScreen`.
+
+### 5. Testes (sem device)
+
+- 3 unit (`capture_occurrence_service_test.dart`): rascunho com mídia + metadados; form + confirm enfileira; captura sem rede.
+- 2 widget (`capture_flow_test.dart`): disparo → form; confirmar → fila.
+- **18 testes anteriores mantidos** (+ 5 novos = **23**).
 
 ## Resultado dos testes
 
@@ -62,9 +61,14 @@ Data: 2026-06-14
 00:00 +13: C:/New Projects/sentinel-project/sentinel-app/test/data/repositories/repositories_test.dart: OccurrenceRepository retry restores jsonSyncing after json failure
 00:00 +14: C:/New Projects/sentinel-project/sentinel-app/test/data/repositories/repositories_test.dart: CheckInRepository creates check-in and syncs without media pipeline
 00:00 +15: C:/New Projects/sentinel-project/sentinel-app/test/data/repositories/repositories_test.dart: SyncQueueRepository getPending excludes synced and includes failed/intermediate
-00:00 +16: C:/New Projects/sentinel-project/sentinel-app/test/data/sync/sync_payload_serializer_test.dart: SyncPayloadSerializer — occurrences serializes occurrence with 2 media matching sync contract
-00:00 +17: C:/New Projects/sentinel-project/sentinel-app/test/data/sync/sync_payload_serializer_test.dart: SyncPayloadSerializer — check-ins serializes check-in matching P4 sync contract
-00:00 +18: All tests passed!
+00:00 +16: C:/New Projects/sentinel-project/sentinel-app/test/data/services/capture_occurrence_service_test.dart: CaptureOccurrenceService fake capture creates local_saved draft with media and metadata
+00:00 +17: C:/New Projects/sentinel-project/sentinel-app/test/data/services/capture_occurrence_service_test.dart: CaptureOccurrenceService form update and confirm enqueue occurrence in pending sync
+00:00 +18: C:/New Projects/sentinel-project/sentinel-app/test/data/services/capture_occurrence_service_test.dart: CaptureOccurrenceService capture is not blocked by offline fakes (no network dependency)
+00:00 +19: C:/New Projects/sentinel-project/sentinel-app/test/data/sync/sync_payload_serializer_test.dart: SyncPayloadSerializer — occurrences serializes occurrence with 2 media matching sync contract
+00:00 +20: C:/New Projects/sentinel-project/sentinel-app/test/data/sync/sync_payload_serializer_test.dart: SyncPayloadSerializer — check-ins serializes check-in matching P4 sync contract
+00:00 +21: C:/New Projects/sentinel-project/sentinel-app/test/presentation/capture/capture_flow_test.dart: capture button creates draft then shows form without blocking
+00:01 +22: C:/New Projects/sentinel-project/sentinel-app/test/presentation/capture/capture_flow_test.dart: confirming form enqueues occurrence for sync
+00:01 +23: All tests passed!
 ```
 
 Comando: `flutter test`
@@ -73,16 +77,27 @@ Comando: `flutter test`
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `lib/data/local/tables/occurrences.dart` | `createdAt` de domínio |
-| `lib/data/local/tables/check_ins.dart` | removido `mediaUploadedAt` |
-| `lib/data/local/app_database.dart` | schema v2 + migration |
-| `lib/data/local/app_database.g.dart` | regenerado (build_runner) |
-| `lib/data/repositories/occurrence_repository.dart` | `createdAt` na criação; `getMedia` |
-| `lib/data/sync/sync_payload_serializer.dart` | **novo** — serialização P3/P4 |
-| `test/data/sync/sync_payload_serializer_test.dart` | **novo** — 2 testes de contrato |
-| `test/data/repositories/repositories_test.dart` | assert `createdAt` na criação |
+| `lib/domain/models/capture_result.dart` | **novo** |
+| `lib/domain/models/geo_fix.dart` | **novo** |
+| `lib/domain/services/camera_source.dart` | **novo** — contrato abstrato |
+| `lib/domain/services/location_source.dart` | **novo** — contrato abstrato |
+| `lib/domain/services/hash_service.dart` | **novo** — contrato abstrato |
+| `lib/data/fakes/fake_camera_source.dart` | **novo** |
+| `lib/data/fakes/fake_location_source.dart` | **novo** |
+| `lib/data/fakes/fake_hash_service.dart` | **novo** |
+| `lib/data/services/capture_occurrence_service.dart` | **novo** — orquestração capture-first |
+| `lib/data/local/tables/occurrence_media.dart` | `contentHash` |
+| `lib/data/local/app_database.dart` | schema v3 + migration |
+| `lib/data/local/app_database.g.dart` | regenerado |
+| `lib/data/repositories/occurrence_repository.dart` | `updateDraft`, `contentHash` em `attachMedia` |
+| `lib/presentation/capture/capture_home_screen.dart` | **novo** — home captura |
+| `lib/presentation/capture/occurrence_draft_form_screen.dart` | **novo** — form pós-captura |
+| `lib/app/di.dart` | registro de fakes + `CaptureOccurrenceService` |
+| `lib/main.dart` | home → `CaptureHomeScreen` |
+| `test/data/services/capture_occurrence_service_test.dart` | **novo** — 3 testes |
+| `test/presentation/capture/capture_flow_test.dart` | **novo** — 2 testes widget |
 | `.cursor/docs/last_executed_task.md` | este relatório |
 
 ## Fora de escopo (mantido)
 
-HTTP/TUS, `SyncGateway` implementação, câmera, rede real, envio do payload (E10).
+Câmera/GPS reais (fase 2 device), `permission_handler`, HTTP/TUS, `SyncGateway` implementação, catálogo offline, worker de sync em background.

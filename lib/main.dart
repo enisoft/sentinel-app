@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app/di.dart';
+import 'presentation/capture/capture_home_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,24 +20,7 @@ class SentinelApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const _PlaceholderHome(),
-    );
-  }
-}
-
-class _PlaceholderHome extends StatelessWidget {
-  const _PlaceholderHome();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sentinel')),
-      body: const Center(
-        child: Text(
-          'Fundação offline-first\n(captura e sync em fases futuras)',
-          textAlign: TextAlign.center,
-        ),
-      ),
+      home: const CaptureHomeScreen(),
     );
   }
 }
