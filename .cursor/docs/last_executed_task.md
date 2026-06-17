@@ -1,73 +1,94 @@
-# Última tarefa executada — ENI-27 · E10.0 Conectividade mínima
+# Última tarefa executada — ENI-27 · Sessão Supabase em secure storage
 
-Pedido: camada de rede antes de upload/sync — login Supabase, `GET /me` no startup, catálogo offline (delta sync), config de ambiente, dropdowns no form. Sem TUS, sync de ocorrências, FGS ou painel.
+Pedido: mover a sessão do `supabase_flutter` para armazenamento seguro (Android Keystore) via `flutter_secure_storage`. Sem tocar em upload/sync/catálogo.
 
 Data: 2026-06-17
 
 ## O que foi feito
 
-### 1. Config de ambiente
+### 1. Dependência
 
-- **`.env.example`** — `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `API_BASE_URL` (emulador: `10.0.2.2`)
-- **`lib/core/config/app_config.dart`** — carrega `.env` ou fallback `.env.example`
-- **`README.md`** — setup local documentado
+- **`pubspec.yaml`** — `flutter_secure_storage: ^10.3.1` (única dep nova)
 
-### 2. Auth Supabase (P1)
+### 2. Adaptadores de storage seguro
 
-- **`AuthGateway`** + **`SupabaseAuthGateway`** — login e-mail/senha, sessão/JWT persistidos pelo SDK
-- **`LoginScreen`** — UI de login com validação
-- **`AuthGate`** — redireciona login ↔ bootstrap conforme sessão
-- **`FakeAuthGateway`** — testes sem rede
+- **`lib/data/auth/secure_key_value_store.dart`** — abstração `SecureKeyValueStore` + `FlutterSecureKeyValueStore` (Keystore no Android)
+- **`lib/data/auth/supabase_session_keys.dart`** — chave estável `sb-session` + helper `legacySharedPrefsSessionKey(url)` para migração
+- **`lib/data/auth/secure_supabase_local_storage.dart`** — implementa `LocalStorage` do SDK 2.15.0 (`initialize`, `hasAccessToken`, `accessToken`, `persistSession`, `removePersistedSession`)
+- **`lib/data/auth/secure_gotrue_async_storage.dart`** — implementa `GotrueAsyncStorage` para verificadores PKCE (prefixo `pkce-`)
 
-### 3. API Laravel + perfil (P1)
+### 3. Inicialização Supabase (`di.dart`)
 
-- **`ApiClient`** — `GET /me`, `GET /catalog/{observables|categories|municipalities}` com Bearer JWT
-- **`OperatorProfile`** — modelo alinhado ao contrato backend
-- **`CachedOperatorProfiles`** (drift) + **`OperatorProfileRepository`** — cache offline do `/me`
-- **`ApiException`** — 401 dispara logout no bootstrap
-
-### 4. Catálogo offline (P2)
-
-- Drift schema **v4**: `categories`, `observables`, `municipalities`, `catalog_sync_cursors`
-- **`CatalogSyncService`** — delta por `updated_since`, upsert `items`, delete `deleted_ids`, cursor `server_time`
-- **`CatalogRepository`** — leitura local + `seedForTesting`
-
-### 5. Bootstrap + UI
-
-- **`BootstrapService`** — `/me` + sync das 3 entidades de catálogo
-- **`AppBootstrapScreen`** — spinner; falha de catálogo não bloqueia captura (banner + retry)
-- **`main.dart`** → `AuthGate` (não mais direto na home)
-- **`CaptureHomeScreen`** — logout + aviso de catálogo
-- **`OccurrenceDraftFormScreen`** — dropdowns de categoria/observável do catálogo local
-
-## Dependências adicionadas
-
-`supabase_flutter`, `http`, `flutter_dotenv`
-
-## Resultado dos testes
-
-```
-flutter test → 32 passed (23 anteriores + 9 novos)
+```dart
+await Supabase.initialize(
+  url: config.supabaseUrl,
+  publishableKey: config.supabaseAnonKey,
+  authOptions: FlutterAuthClientOptions(
+    localStorage: SecureSupabaseLocalStorage(...),
+    pkceAsyncStorage: SecureGotrueAsyncStorage(...),
+  ),
+);
 ```
 
-Novos testes:
-- `test/data/remote/api_client_test.dart` (4)
-- `test/data/repositories/operator_profile_repository_test.dart` (1)
-- `test/data/services/catalog_sync_service_test.dart` (2)
-- `test/presentation/auth/login_screen_test.dart` (2)
-- `test/presentation/capture/capture_flow_test.dart` — atualizado para dropdowns + seed catálogo
+API confirmada em `supabase_flutter` 2.15.0: `FlutterAuthClientOptions.localStorage` e `pkceAsyncStorage`.
 
-## Verificação manual
+### 4. Migração SharedPreferences → secure storage
 
-1. `cd sentinel-backend`: `npx supabase start`, `php artisan migrate`, `php artisan db:seed`, `php artisan serve`
-2. `php artisan sentinel:create-operator operador@test.com Senha123! "Operador"`
-3. Copiar `sentinel-app/.env.example` → `.env`, preencher `SUPABASE_ANON_KEY` (`npx supabase status -o env`)
-4. `flutter run` no emulador → login → bootstrap → captura → form com dropdowns
+Na primeira `initialize()` do adaptador:
+
+1. Lê sessão legada em `sb-<host>-auth-token` (chave padrão do SDK)
+2. Se existir e `sb-session` ainda não estiver no secure storage → copia
+3. Remove a chave legada do SharedPreferences (evita resíduo em texto plano)
+
+### 5. Logout
+
+`SupabaseAuthGateway.signOut()` → `auth.signOut()` → SDK emite `signedOut` → `removePersistedSession()` no `LocalStorage` → apaga `sb-session` do secure storage.
+
+## Testes
+
+```
+flutter test → 37 passed (32 anteriores + 5 novos)
+```
+
+Novos testes em `test/data/auth/secure_supabase_local_storage_test.dart`:
+
+- persist/get/delete da sessão (fake `InMemorySecureKeyValueStore` — sem Keystore)
+- migração de SharedPreferences legado + limpeza da chave antiga
+- migração não sobrescreve sessão já existente no secure storage
+- PKCE set/get/remove
+
+`FakeAuthGateway` dos testes de UI continua sem Supabase/Keystore.
+
+## Verificação manual (pendente no ambiente local)
+
+Emulador Android **não estava conectado** nesta sessão (`flutter devices` → apenas Windows/Chrome/Edge).
+
+Passos para validar no emulador:
+
+1. `flutter run` no emulador → login → matar app → reabrir → sessão deve restaurar
+2. Inspecionar SharedPreferences:
+   ```bash
+   adb shell run-as com.sentinel.sentinel_app cat shared_prefs/*.xml
+   ```
+   **Esperado:** ausência de `sb-*-auth-token` após login/migração; sessão apenas no Keystore (não visível em `shared_prefs`).
+
+## Arquivos tocados
+
+| Arquivo | Ação |
+|---------|------|
+| `pubspec.yaml` | dep `flutter_secure_storage` |
+| `lib/data/auth/secure_key_value_store.dart` | novo |
+| `lib/data/auth/supabase_session_keys.dart` | novo |
+| `lib/data/auth/secure_supabase_local_storage.dart` | novo |
+| `lib/data/auth/secure_gotrue_async_storage.dart` | novo |
+| `lib/app/di.dart` | `authOptions` com storage seguro |
+| `test/data/auth/secure_supabase_local_storage_test.dart` | novo |
+| `.cursor/docs/last_executed_task.md` | este relatório |
 
 ## Fora de escopo (mantido)
 
-`SyncGateway` implementação, TUS, `POST /occurrences/sync`, `POST /check-ins/sync`, worker/FGS, câmera/GPS reais, inbox tasks, alterações backend/Linear.
+Upload/sync, catálogo, TUS, contrato `/me`, `FakeAuthGateway` em testes de integração UI.
 
 ## Próximo passo sugerido
 
-E10.1+ — implementar `SyncGateway` (upload mídia + sync JSON de ocorrências/check-ins).
+Rodar verificação manual no emulador (login → kill → reopen + `adb shell run-as`) e confirmar ausência de token em `shared_prefs`.

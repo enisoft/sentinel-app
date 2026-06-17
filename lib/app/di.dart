@@ -2,6 +2,10 @@ import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/app_config.dart';
+import '../data/auth/secure_gotrue_async_storage.dart';
+import '../data/auth/secure_key_value_store.dart';
+import '../data/auth/secure_supabase_local_storage.dart';
+import '../data/auth/supabase_session_keys.dart';
 import '../data/fakes/fake_camera_source.dart';
 import '../data/fakes/fake_hash_service.dart';
 import '../data/fakes/fake_location_source.dart';
@@ -30,9 +34,20 @@ Future<void> configureDependencies() async {
 
   final config = await AppConfig.load();
 
+  final secureStore = FlutterSecureKeyValueStore();
+  final legacyKey = legacySharedPrefsSessionKey(config.supabaseUrl);
+
   await Supabase.initialize(
     url: config.supabaseUrl,
     publishableKey: config.supabaseAnonKey,
+    authOptions: FlutterAuthClientOptions(
+      localStorage: SecureSupabaseLocalStorage(
+        persistSessionKey: supabaseSecureSessionKey,
+        store: secureStore,
+        legacySharedPrefsKey: legacyKey,
+      ),
+      pkceAsyncStorage: SecureGotrueAsyncStorage(store: secureStore),
+    ),
   );
 
   getIt.registerSingleton<AppConfig>(config);
