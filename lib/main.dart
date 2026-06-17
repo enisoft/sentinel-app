@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app/di.dart';
-import 'presentation/capture/capture_home_screen.dart';
+import 'presentation/auth/auth_gate.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +20,7 @@ class SentinelApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const CaptureHomeScreen(),
+      home: const AuthGate(),
     );
   }
 }

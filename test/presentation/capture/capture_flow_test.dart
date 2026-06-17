@@ -7,6 +7,7 @@ import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
 import 'package:sentinel_app/data/fakes/fake_location_source.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
+import 'package:sentinel_app/data/repositories/catalog_repository.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/data/repositories/sync_queue_repository.dart';
 import 'package:sentinel_app/data/services/capture_occurrence_service.dart';
@@ -18,6 +19,7 @@ void main() {
   late CaptureOccurrenceService captureService;
   late OccurrenceRepository occurrenceRepo;
   late SyncQueueRepository queueRepo;
+  late CatalogRepository catalogRepo;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
@@ -30,6 +32,16 @@ void main() {
     captureService = getIt<CaptureOccurrenceService>();
     occurrenceRepo = getIt<OccurrenceRepository>();
     queueRepo = getIt<SyncQueueRepository>();
+    catalogRepo = getIt<CatalogRepository>();
+
+    await catalogRepo.seedForTesting(
+      categories: const [
+        CatalogItem(id: 'cat-ui', name: 'Evento'),
+      ],
+      observables: const [
+        CatalogItem(id: 'obs-ui', name: 'Político', type: 'person'),
+      ],
+    );
   });
 
   tearDown(() async {
@@ -67,8 +79,16 @@ void main() {
     await tester.tap(find.byKey(const Key('capture_button')));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('category_field')), 'cat-ui');
-    await tester.enterText(find.byKey(const Key('observable_field')), 'obs-ui');
+    await tester.tap(find.byKey(const Key('category_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Evento').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('observable_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Político').last);
+    await tester.pumpAndSettle();
+
     await tester.enterText(find.byKey(const Key('note_field')), 'Nota UI');
 
     await tester.tap(find.byKey(const Key('confirm_button')));

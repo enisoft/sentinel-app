@@ -2708,6 +2708,1579 @@ class CheckInsCompanion extends UpdateCompanion<CheckIn> {
   }
 }
 
+class $CachedOperatorProfilesTable extends CachedOperatorProfiles
+    with TableInfo<$CachedOperatorProfilesTable, CachedOperatorProfile> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedOperatorProfilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _municipalityIdMeta = const VerificationMeta(
+    'municipalityId',
+  );
+  @override
+  late final GeneratedColumn<String> municipalityId = GeneratedColumn<String>(
+    'municipality_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _photoPathMeta = const VerificationMeta(
+    'photoPath',
+  );
+  @override
+  late final GeneratedColumn<String> photoPath = GeneratedColumn<String>(
+    'photo_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    role,
+    municipalityId,
+    photoPath,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_operator_profiles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedOperatorProfile> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('municipality_id')) {
+      context.handle(
+        _municipalityIdMeta,
+        municipalityId.isAcceptableOrUnknown(
+          data['municipality_id']!,
+          _municipalityIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('photo_path')) {
+      context.handle(
+        _photoPathMeta,
+        photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
+      );
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedOperatorProfile map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedOperatorProfile(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+      municipalityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}municipality_id'],
+      ),
+      photoPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}photo_path'],
+      ),
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedOperatorProfilesTable createAlias(String alias) {
+    return $CachedOperatorProfilesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedOperatorProfile extends DataClass
+    implements Insertable<CachedOperatorProfile> {
+  final String id;
+  final String name;
+  final String role;
+  final String? municipalityId;
+  final String? photoPath;
+  final DateTime cachedAt;
+  const CachedOperatorProfile({
+    required this.id,
+    required this.name,
+    required this.role,
+    this.municipalityId,
+    this.photoPath,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['role'] = Variable<String>(role);
+    if (!nullToAbsent || municipalityId != null) {
+      map['municipality_id'] = Variable<String>(municipalityId);
+    }
+    if (!nullToAbsent || photoPath != null) {
+      map['photo_path'] = Variable<String>(photoPath);
+    }
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedOperatorProfilesCompanion toCompanion(bool nullToAbsent) {
+    return CachedOperatorProfilesCompanion(
+      id: Value(id),
+      name: Value(name),
+      role: Value(role),
+      municipalityId: municipalityId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(municipalityId),
+      photoPath: photoPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(photoPath),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedOperatorProfile.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedOperatorProfile(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      role: serializer.fromJson<String>(json['role']),
+      municipalityId: serializer.fromJson<String?>(json['municipalityId']),
+      photoPath: serializer.fromJson<String?>(json['photoPath']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'role': serializer.toJson<String>(role),
+      'municipalityId': serializer.toJson<String?>(municipalityId),
+      'photoPath': serializer.toJson<String?>(photoPath),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedOperatorProfile copyWith({
+    String? id,
+    String? name,
+    String? role,
+    Value<String?> municipalityId = const Value.absent(),
+    Value<String?> photoPath = const Value.absent(),
+    DateTime? cachedAt,
+  }) => CachedOperatorProfile(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    role: role ?? this.role,
+    municipalityId: municipalityId.present
+        ? municipalityId.value
+        : this.municipalityId,
+    photoPath: photoPath.present ? photoPath.value : this.photoPath,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedOperatorProfile copyWithCompanion(
+    CachedOperatorProfilesCompanion data,
+  ) {
+    return CachedOperatorProfile(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      role: data.role.present ? data.role.value : this.role,
+      municipalityId: data.municipalityId.present
+          ? data.municipalityId.value
+          : this.municipalityId,
+      photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedOperatorProfile(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('role: $role, ')
+          ..write('municipalityId: $municipalityId, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, name, role, municipalityId, photoPath, cachedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedOperatorProfile &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.role == this.role &&
+          other.municipalityId == this.municipalityId &&
+          other.photoPath == this.photoPath &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedOperatorProfilesCompanion
+    extends UpdateCompanion<CachedOperatorProfile> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> role;
+  final Value<String?> municipalityId;
+  final Value<String?> photoPath;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedOperatorProfilesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.role = const Value.absent(),
+    this.municipalityId = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedOperatorProfilesCompanion.insert({
+    required String id,
+    required String name,
+    required String role,
+    this.municipalityId = const Value.absent(),
+    this.photoPath = const Value.absent(),
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       role = Value(role),
+       cachedAt = Value(cachedAt);
+  static Insertable<CachedOperatorProfile> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? role,
+    Expression<String>? municipalityId,
+    Expression<String>? photoPath,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (role != null) 'role': role,
+      if (municipalityId != null) 'municipality_id': municipalityId,
+      if (photoPath != null) 'photo_path': photoPath,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedOperatorProfilesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? role,
+    Value<String?>? municipalityId,
+    Value<String?>? photoPath,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedOperatorProfilesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      role: role ?? this.role,
+      municipalityId: municipalityId ?? this.municipalityId,
+      photoPath: photoPath ?? this.photoPath,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (municipalityId.present) {
+      map['municipality_id'] = Variable<String>(municipalityId.value);
+    }
+    if (photoPath.present) {
+      map['photo_path'] = Variable<String>(photoPath.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedOperatorProfilesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('role: $role, ')
+          ..write('municipalityId: $municipalityId, ')
+          ..write('photoPath: $photoPath, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CategoriesTable extends Categories
+    with TableInfo<$CategoriesTable, Category> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CategoriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'categories';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Category> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Category map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Category(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CategoriesTable createAlias(String alias) {
+    return $CategoriesTable(attachedDatabase, alias);
+  }
+}
+
+class Category extends DataClass implements Insertable<Category> {
+  final String id;
+  final String name;
+  final DateTime updatedAt;
+  const Category({
+    required this.id,
+    required this.name,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CategoriesCompanion toCompanion(bool nullToAbsent) {
+    return CategoriesCompanion(
+      id: Value(id),
+      name: Value(name),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Category.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Category(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Category copyWith({String? id, String? name, DateTime? updatedAt}) =>
+      Category(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  Category copyWithCompanion(CategoriesCompanion data) {
+    return Category(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Category(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Category &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CategoriesCompanion extends UpdateCompanion<Category> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CategoriesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CategoriesCompanion.insert({
+    required String id,
+    required String name,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       updatedAt = Value(updatedAt);
+  static Insertable<Category> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CategoriesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CategoriesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CategoriesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ObservablesTable extends Observables
+    with TableInfo<$ObservablesTable, Observable> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ObservablesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, type, name, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'observables';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Observable> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Observable map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Observable(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ObservablesTable createAlias(String alias) {
+    return $ObservablesTable(attachedDatabase, alias);
+  }
+}
+
+class Observable extends DataClass implements Insertable<Observable> {
+  final String id;
+  final String type;
+  final String name;
+  final DateTime updatedAt;
+  const Observable({
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['type'] = Variable<String>(type);
+    map['name'] = Variable<String>(name);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ObservablesCompanion toCompanion(bool nullToAbsent) {
+    return ObservablesCompanion(
+      id: Value(id),
+      type: Value(type),
+      name: Value(name),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Observable.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Observable(
+      id: serializer.fromJson<String>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      name: serializer.fromJson<String>(json['name']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'type': serializer.toJson<String>(type),
+      'name': serializer.toJson<String>(name),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Observable copyWith({
+    String? id,
+    String? type,
+    String? name,
+    DateTime? updatedAt,
+  }) => Observable(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    name: name ?? this.name,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  Observable copyWithCompanion(ObservablesCompanion data) {
+    return Observable(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      name: data.name.present ? data.name.value : this.name,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Observable(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('name: $name, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, type, name, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Observable &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.name == this.name &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ObservablesCompanion extends UpdateCompanion<Observable> {
+  final Value<String> id;
+  final Value<String> type;
+  final Value<String> name;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ObservablesCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.name = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ObservablesCompanion.insert({
+    required String id,
+    required String type,
+    required String name,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       type = Value(type),
+       name = Value(name),
+       updatedAt = Value(updatedAt);
+  static Insertable<Observable> custom({
+    Expression<String>? id,
+    Expression<String>? type,
+    Expression<String>? name,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (name != null) 'name': name,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ObservablesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? type,
+    Value<String>? name,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ObservablesCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      name: name ?? this.name,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ObservablesCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('name: $name, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $MunicipalitiesTable extends Municipalities
+    with TableInfo<$MunicipalitiesTable, Municipality> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MunicipalitiesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _latitudeMeta = const VerificationMeta(
+    'latitude',
+  );
+  @override
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+    'latitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _longitudeMeta = const VerificationMeta(
+    'longitude',
+  );
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+    'longitude',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    latitude,
+    longitude,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'municipalities';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Municipality> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('latitude')) {
+      context.handle(
+        _latitudeMeta,
+        latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta),
+      );
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(
+        _longitudeMeta,
+        longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Municipality map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Municipality(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      latitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}latitude'],
+      ),
+      longitude: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}longitude'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $MunicipalitiesTable createAlias(String alias) {
+    return $MunicipalitiesTable(attachedDatabase, alias);
+  }
+}
+
+class Municipality extends DataClass implements Insertable<Municipality> {
+  final String id;
+  final String name;
+  final double? latitude;
+  final double? longitude;
+  final DateTime updatedAt;
+  const Municipality({
+    required this.id,
+    required this.name,
+    this.latitude,
+    this.longitude,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  MunicipalitiesCompanion toCompanion(bool nullToAbsent) {
+    return MunicipalitiesCompanion(
+      id: Value(id),
+      name: Value(name),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Municipality.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Municipality(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Municipality copyWith({
+    String? id,
+    String? name,
+    Value<double?> latitude = const Value.absent(),
+    Value<double?> longitude = const Value.absent(),
+    DateTime? updatedAt,
+  }) => Municipality(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    latitude: latitude.present ? latitude.value : this.latitude,
+    longitude: longitude.present ? longitude.value : this.longitude,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  Municipality copyWithCompanion(MunicipalitiesCompanion data) {
+    return Municipality(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Municipality(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, latitude, longitude, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Municipality &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude &&
+          other.updatedAt == this.updatedAt);
+}
+
+class MunicipalitiesCompanion extends UpdateCompanion<Municipality> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const MunicipalitiesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MunicipalitiesCompanion.insert({
+    required String id,
+    required String name,
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       updatedAt = Value(updatedAt);
+  static Insertable<Municipality> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MunicipalitiesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<double?>? latitude,
+    Value<double?>? longitude,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return MunicipalitiesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MunicipalitiesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CatalogSyncCursorsTable extends CatalogSyncCursors
+    with TableInfo<$CatalogSyncCursorsTable, CatalogSyncCursor> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CatalogSyncCursorsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  @override
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _lastServerTimeMeta = const VerificationMeta(
+    'lastServerTime',
+  );
+  @override
+  late final GeneratedColumn<String> lastServerTime = GeneratedColumn<String>(
+    'last_server_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [entity, lastServerTime];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'catalog_sync_cursors';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CatalogSyncCursor> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('last_server_time')) {
+      context.handle(
+        _lastServerTimeMeta,
+        lastServerTime.isAcceptableOrUnknown(
+          data['last_server_time']!,
+          _lastServerTimeMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {entity};
+  @override
+  CatalogSyncCursor map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CatalogSyncCursor(
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      lastServerTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_server_time'],
+      ),
+    );
+  }
+
+  @override
+  $CatalogSyncCursorsTable createAlias(String alias) {
+    return $CatalogSyncCursorsTable(attachedDatabase, alias);
+  }
+}
+
+class CatalogSyncCursor extends DataClass
+    implements Insertable<CatalogSyncCursor> {
+  final String entity;
+  final String? lastServerTime;
+  const CatalogSyncCursor({required this.entity, this.lastServerTime});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['entity'] = Variable<String>(entity);
+    if (!nullToAbsent || lastServerTime != null) {
+      map['last_server_time'] = Variable<String>(lastServerTime);
+    }
+    return map;
+  }
+
+  CatalogSyncCursorsCompanion toCompanion(bool nullToAbsent) {
+    return CatalogSyncCursorsCompanion(
+      entity: Value(entity),
+      lastServerTime: lastServerTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastServerTime),
+    );
+  }
+
+  factory CatalogSyncCursor.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CatalogSyncCursor(
+      entity: serializer.fromJson<String>(json['entity']),
+      lastServerTime: serializer.fromJson<String?>(json['lastServerTime']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'entity': serializer.toJson<String>(entity),
+      'lastServerTime': serializer.toJson<String?>(lastServerTime),
+    };
+  }
+
+  CatalogSyncCursor copyWith({
+    String? entity,
+    Value<String?> lastServerTime = const Value.absent(),
+  }) => CatalogSyncCursor(
+    entity: entity ?? this.entity,
+    lastServerTime: lastServerTime.present
+        ? lastServerTime.value
+        : this.lastServerTime,
+  );
+  CatalogSyncCursor copyWithCompanion(CatalogSyncCursorsCompanion data) {
+    return CatalogSyncCursor(
+      entity: data.entity.present ? data.entity.value : this.entity,
+      lastServerTime: data.lastServerTime.present
+          ? data.lastServerTime.value
+          : this.lastServerTime,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogSyncCursor(')
+          ..write('entity: $entity, ')
+          ..write('lastServerTime: $lastServerTime')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(entity, lastServerTime);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CatalogSyncCursor &&
+          other.entity == this.entity &&
+          other.lastServerTime == this.lastServerTime);
+}
+
+class CatalogSyncCursorsCompanion extends UpdateCompanion<CatalogSyncCursor> {
+  final Value<String> entity;
+  final Value<String?> lastServerTime;
+  final Value<int> rowid;
+  const CatalogSyncCursorsCompanion({
+    this.entity = const Value.absent(),
+    this.lastServerTime = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CatalogSyncCursorsCompanion.insert({
+    required String entity,
+    this.lastServerTime = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : entity = Value(entity);
+  static Insertable<CatalogSyncCursor> custom({
+    Expression<String>? entity,
+    Expression<String>? lastServerTime,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (entity != null) 'entity': entity,
+      if (lastServerTime != null) 'last_server_time': lastServerTime,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CatalogSyncCursorsCompanion copyWith({
+    Value<String>? entity,
+    Value<String?>? lastServerTime,
+    Value<int>? rowid,
+  }) {
+    return CatalogSyncCursorsCompanion(
+      entity: entity ?? this.entity,
+      lastServerTime: lastServerTime ?? this.lastServerTime,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (lastServerTime.present) {
+      map['last_server_time'] = Variable<String>(lastServerTime.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogSyncCursorsCompanion(')
+          ..write('entity: $entity, ')
+          ..write('lastServerTime: $lastServerTime, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2716,6 +4289,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $CheckInsTable checkIns = $CheckInsTable(this);
+  late final $CachedOperatorProfilesTable cachedOperatorProfiles =
+      $CachedOperatorProfilesTable(this);
+  late final $CategoriesTable categories = $CategoriesTable(this);
+  late final $ObservablesTable observables = $ObservablesTable(this);
+  late final $MunicipalitiesTable municipalities = $MunicipalitiesTable(this);
+  late final $CatalogSyncCursorsTable catalogSyncCursors =
+      $CatalogSyncCursorsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2724,6 +4304,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     occurrences,
     occurrenceMedia,
     checkIns,
+    cachedOperatorProfiles,
+    categories,
+    observables,
+    municipalities,
+    catalogSyncCursors,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4213,6 +5798,943 @@ typedef $$CheckInsTableProcessedTableManager =
       CheckIn,
       PrefetchHooks Function()
     >;
+typedef $$CachedOperatorProfilesTableCreateCompanionBuilder =
+    CachedOperatorProfilesCompanion Function({
+      required String id,
+      required String name,
+      required String role,
+      Value<String?> municipalityId,
+      Value<String?> photoPath,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedOperatorProfilesTableUpdateCompanionBuilder =
+    CachedOperatorProfilesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> role,
+      Value<String?> municipalityId,
+      Value<String?> photoPath,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedOperatorProfilesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedOperatorProfilesTable> {
+  $$CachedOperatorProfilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get municipalityId => $composableBuilder(
+    column: $table.municipalityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedOperatorProfilesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedOperatorProfilesTable> {
+  $$CachedOperatorProfilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get municipalityId => $composableBuilder(
+    column: $table.municipalityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get photoPath => $composableBuilder(
+    column: $table.photoPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedOperatorProfilesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedOperatorProfilesTable> {
+  $$CachedOperatorProfilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get municipalityId => $composableBuilder(
+    column: $table.municipalityId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get photoPath =>
+      $composableBuilder(column: $table.photoPath, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedOperatorProfilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedOperatorProfilesTable,
+          CachedOperatorProfile,
+          $$CachedOperatorProfilesTableFilterComposer,
+          $$CachedOperatorProfilesTableOrderingComposer,
+          $$CachedOperatorProfilesTableAnnotationComposer,
+          $$CachedOperatorProfilesTableCreateCompanionBuilder,
+          $$CachedOperatorProfilesTableUpdateCompanionBuilder,
+          (
+            CachedOperatorProfile,
+            BaseReferences<
+              _$AppDatabase,
+              $CachedOperatorProfilesTable,
+              CachedOperatorProfile
+            >,
+          ),
+          CachedOperatorProfile,
+          PrefetchHooks Function()
+        > {
+  $$CachedOperatorProfilesTableTableManager(
+    _$AppDatabase db,
+    $CachedOperatorProfilesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedOperatorProfilesTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$CachedOperatorProfilesTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$CachedOperatorProfilesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String?> municipalityId = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedOperatorProfilesCompanion(
+                id: id,
+                name: name,
+                role: role,
+                municipalityId: municipalityId,
+                photoPath: photoPath,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String role,
+                Value<String?> municipalityId = const Value.absent(),
+                Value<String?> photoPath = const Value.absent(),
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedOperatorProfilesCompanion.insert(
+                id: id,
+                name: name,
+                role: role,
+                municipalityId: municipalityId,
+                photoPath: photoPath,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedOperatorProfilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedOperatorProfilesTable,
+      CachedOperatorProfile,
+      $$CachedOperatorProfilesTableFilterComposer,
+      $$CachedOperatorProfilesTableOrderingComposer,
+      $$CachedOperatorProfilesTableAnnotationComposer,
+      $$CachedOperatorProfilesTableCreateCompanionBuilder,
+      $$CachedOperatorProfilesTableUpdateCompanionBuilder,
+      (
+        CachedOperatorProfile,
+        BaseReferences<
+          _$AppDatabase,
+          $CachedOperatorProfilesTable,
+          CachedOperatorProfile
+        >,
+      ),
+      CachedOperatorProfile,
+      PrefetchHooks Function()
+    >;
+typedef $$CategoriesTableCreateCompanionBuilder =
+    CategoriesCompanion Function({
+      required String id,
+      required String name,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CategoriesTableUpdateCompanionBuilder =
+    CategoriesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CategoriesTableFilterComposer
+    extends Composer<_$AppDatabase, $CategoriesTable> {
+  $$CategoriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CategoriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CategoriesTable> {
+  $$CategoriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CategoriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CategoriesTable> {
+  $$CategoriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CategoriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CategoriesTable,
+          Category,
+          $$CategoriesTableFilterComposer,
+          $$CategoriesTableOrderingComposer,
+          $$CategoriesTableAnnotationComposer,
+          $$CategoriesTableCreateCompanionBuilder,
+          $$CategoriesTableUpdateCompanionBuilder,
+          (Category, BaseReferences<_$AppDatabase, $CategoriesTable, Category>),
+          Category,
+          PrefetchHooks Function()
+        > {
+  $$CategoriesTableTableManager(_$AppDatabase db, $CategoriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CategoriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CategoriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CategoriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CategoriesCompanion(
+                id: id,
+                name: name,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CategoriesCompanion.insert(
+                id: id,
+                name: name,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CategoriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CategoriesTable,
+      Category,
+      $$CategoriesTableFilterComposer,
+      $$CategoriesTableOrderingComposer,
+      $$CategoriesTableAnnotationComposer,
+      $$CategoriesTableCreateCompanionBuilder,
+      $$CategoriesTableUpdateCompanionBuilder,
+      (Category, BaseReferences<_$AppDatabase, $CategoriesTable, Category>),
+      Category,
+      PrefetchHooks Function()
+    >;
+typedef $$ObservablesTableCreateCompanionBuilder =
+    ObservablesCompanion Function({
+      required String id,
+      required String type,
+      required String name,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ObservablesTableUpdateCompanionBuilder =
+    ObservablesCompanion Function({
+      Value<String> id,
+      Value<String> type,
+      Value<String> name,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ObservablesTableFilterComposer
+    extends Composer<_$AppDatabase, $ObservablesTable> {
+  $$ObservablesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ObservablesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ObservablesTable> {
+  $$ObservablesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ObservablesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ObservablesTable> {
+  $$ObservablesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ObservablesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ObservablesTable,
+          Observable,
+          $$ObservablesTableFilterComposer,
+          $$ObservablesTableOrderingComposer,
+          $$ObservablesTableAnnotationComposer,
+          $$ObservablesTableCreateCompanionBuilder,
+          $$ObservablesTableUpdateCompanionBuilder,
+          (
+            Observable,
+            BaseReferences<_$AppDatabase, $ObservablesTable, Observable>,
+          ),
+          Observable,
+          PrefetchHooks Function()
+        > {
+  $$ObservablesTableTableManager(_$AppDatabase db, $ObservablesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ObservablesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ObservablesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ObservablesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ObservablesCompanion(
+                id: id,
+                type: type,
+                name: name,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String type,
+                required String name,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ObservablesCompanion.insert(
+                id: id,
+                type: type,
+                name: name,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ObservablesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ObservablesTable,
+      Observable,
+      $$ObservablesTableFilterComposer,
+      $$ObservablesTableOrderingComposer,
+      $$ObservablesTableAnnotationComposer,
+      $$ObservablesTableCreateCompanionBuilder,
+      $$ObservablesTableUpdateCompanionBuilder,
+      (
+        Observable,
+        BaseReferences<_$AppDatabase, $ObservablesTable, Observable>,
+      ),
+      Observable,
+      PrefetchHooks Function()
+    >;
+typedef $$MunicipalitiesTableCreateCompanionBuilder =
+    MunicipalitiesCompanion Function({
+      required String id,
+      required String name,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$MunicipalitiesTableUpdateCompanionBuilder =
+    MunicipalitiesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<double?> latitude,
+      Value<double?> longitude,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$MunicipalitiesTableFilterComposer
+    extends Composer<_$AppDatabase, $MunicipalitiesTable> {
+  $$MunicipalitiesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MunicipalitiesTableOrderingComposer
+    extends Composer<_$AppDatabase, $MunicipalitiesTable> {
+  $$MunicipalitiesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+    column: $table.latitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+    column: $table.longitude,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MunicipalitiesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MunicipalitiesTable> {
+  $$MunicipalitiesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$MunicipalitiesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MunicipalitiesTable,
+          Municipality,
+          $$MunicipalitiesTableFilterComposer,
+          $$MunicipalitiesTableOrderingComposer,
+          $$MunicipalitiesTableAnnotationComposer,
+          $$MunicipalitiesTableCreateCompanionBuilder,
+          $$MunicipalitiesTableUpdateCompanionBuilder,
+          (
+            Municipality,
+            BaseReferences<_$AppDatabase, $MunicipalitiesTable, Municipality>,
+          ),
+          Municipality,
+          PrefetchHooks Function()
+        > {
+  $$MunicipalitiesTableTableManager(
+    _$AppDatabase db,
+    $MunicipalitiesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MunicipalitiesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$MunicipalitiesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$MunicipalitiesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MunicipalitiesCompanion(
+                id: id,
+                name: name,
+                latitude: latitude,
+                longitude: longitude,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<double?> latitude = const Value.absent(),
+                Value<double?> longitude = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => MunicipalitiesCompanion.insert(
+                id: id,
+                name: name,
+                latitude: latitude,
+                longitude: longitude,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MunicipalitiesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MunicipalitiesTable,
+      Municipality,
+      $$MunicipalitiesTableFilterComposer,
+      $$MunicipalitiesTableOrderingComposer,
+      $$MunicipalitiesTableAnnotationComposer,
+      $$MunicipalitiesTableCreateCompanionBuilder,
+      $$MunicipalitiesTableUpdateCompanionBuilder,
+      (
+        Municipality,
+        BaseReferences<_$AppDatabase, $MunicipalitiesTable, Municipality>,
+      ),
+      Municipality,
+      PrefetchHooks Function()
+    >;
+typedef $$CatalogSyncCursorsTableCreateCompanionBuilder =
+    CatalogSyncCursorsCompanion Function({
+      required String entity,
+      Value<String?> lastServerTime,
+      Value<int> rowid,
+    });
+typedef $$CatalogSyncCursorsTableUpdateCompanionBuilder =
+    CatalogSyncCursorsCompanion Function({
+      Value<String> entity,
+      Value<String?> lastServerTime,
+      Value<int> rowid,
+    });
+
+class $$CatalogSyncCursorsTableFilterComposer
+    extends Composer<_$AppDatabase, $CatalogSyncCursorsTable> {
+  $$CatalogSyncCursorsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastServerTime => $composableBuilder(
+    column: $table.lastServerTime,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CatalogSyncCursorsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CatalogSyncCursorsTable> {
+  $$CatalogSyncCursorsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastServerTime => $composableBuilder(
+    column: $table.lastServerTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CatalogSyncCursorsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CatalogSyncCursorsTable> {
+  $$CatalogSyncCursorsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<String> get lastServerTime => $composableBuilder(
+    column: $table.lastServerTime,
+    builder: (column) => column,
+  );
+}
+
+class $$CatalogSyncCursorsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CatalogSyncCursorsTable,
+          CatalogSyncCursor,
+          $$CatalogSyncCursorsTableFilterComposer,
+          $$CatalogSyncCursorsTableOrderingComposer,
+          $$CatalogSyncCursorsTableAnnotationComposer,
+          $$CatalogSyncCursorsTableCreateCompanionBuilder,
+          $$CatalogSyncCursorsTableUpdateCompanionBuilder,
+          (
+            CatalogSyncCursor,
+            BaseReferences<
+              _$AppDatabase,
+              $CatalogSyncCursorsTable,
+              CatalogSyncCursor
+            >,
+          ),
+          CatalogSyncCursor,
+          PrefetchHooks Function()
+        > {
+  $$CatalogSyncCursorsTableTableManager(
+    _$AppDatabase db,
+    $CatalogSyncCursorsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CatalogSyncCursorsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CatalogSyncCursorsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CatalogSyncCursorsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> entity = const Value.absent(),
+                Value<String?> lastServerTime = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogSyncCursorsCompanion(
+                entity: entity,
+                lastServerTime: lastServerTime,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String entity,
+                Value<String?> lastServerTime = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogSyncCursorsCompanion.insert(
+                entity: entity,
+                lastServerTime: lastServerTime,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CatalogSyncCursorsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CatalogSyncCursorsTable,
+      CatalogSyncCursor,
+      $$CatalogSyncCursorsTableFilterComposer,
+      $$CatalogSyncCursorsTableOrderingComposer,
+      $$CatalogSyncCursorsTableAnnotationComposer,
+      $$CatalogSyncCursorsTableCreateCompanionBuilder,
+      $$CatalogSyncCursorsTableUpdateCompanionBuilder,
+      (
+        CatalogSyncCursor,
+        BaseReferences<
+          _$AppDatabase,
+          $CatalogSyncCursorsTable,
+          CatalogSyncCursor
+        >,
+      ),
+      CatalogSyncCursor,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4223,4 +6745,17 @@ class $AppDatabaseManager {
       $$OccurrenceMediaTableTableManager(_db, _db.occurrenceMedia);
   $$CheckInsTableTableManager get checkIns =>
       $$CheckInsTableTableManager(_db, _db.checkIns);
+  $$CachedOperatorProfilesTableTableManager get cachedOperatorProfiles =>
+      $$CachedOperatorProfilesTableTableManager(
+        _db,
+        _db.cachedOperatorProfiles,
+      );
+  $$CategoriesTableTableManager get categories =>
+      $$CategoriesTableTableManager(_db, _db.categories);
+  $$ObservablesTableTableManager get observables =>
+      $$ObservablesTableTableManager(_db, _db.observables);
+  $$MunicipalitiesTableTableManager get municipalities =>
+      $$MunicipalitiesTableTableManager(_db, _db.municipalities);
+  $$CatalogSyncCursorsTableTableManager get catalogSyncCursors =>
+      $$CatalogSyncCursorsTableTableManager(_db, _db.catalogSyncCursors);
 }

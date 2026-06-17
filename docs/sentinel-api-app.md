@@ -4,20 +4,21 @@ Objetivo: definir a superfície de API mínima para o **sentinel-app** funcionar
 ponta a ponta, em ordem de prioridade. App e backend avançam em paralelo contra
 este contrato.
 
-Estado: atualizado em 2026-06-14 (auth e timestamps já implementados — ver marcações).
+Estado: atualizado em 2026-06-17.
 
 ---
 
 ## Onde estamos
 
-- `POST /api/v1/occurrences/sync` — **pronto, testado e autenticado**. Upsert
-  idempotente por UUID; `reported_by` vem do token; persiste `created_at`/
-  `updated_at` do cliente; `synced_at` é autoridade do servidor; `data.ids` na
-  ordem do payload.
 - **Autenticação Supabase Auth (HS256)** — **pronta**. Grupo `/api/v1` protegido;
   middleware valida assinatura/`exp`/`aud`; identidade resolvida em `users` pelo `sub`.
+- **Provisionamento + seeds** — **prontos** (`sentinel:create-operator`, `DatabaseSeeder`
+  com roles, municípios, categorias e observables).
+- **`GET /me`**, **catálogo delta**, **`POST /occurrences/sync`**, **`POST /check-ins/sync`**
+  — **prontos e testados** (contratos em `STATUS_PROJETO.md`).
+- **Storage privado + RLS** — **pronto** (bucket `sentinel-media`).
 - Schema de domínio — **pronto**.
-- Catálogo, check-ins, inbox de tasks, `GET /me` — **a construir**.
+- **Inbox de tasks (P5)** — **a construir** (depende do painel publicar tasks).
 
 Legenda de status: ✅ feito · 🔜 a construir
 
@@ -37,28 +38,31 @@ Derivado de `$request->user()->id`. Campo no body é ignorado. FEITO.
 `created_at`/`updated_at` do cliente persistem; `synced_at` é setado pelo servidor
 a cada sync e ignora valor do cliente. FEITO.
 
-### 🔜 4. Bucket privado + RLS (épico de Storage)
-`path` guarda o caminho do objeto (não URL pública). Falta definir políticas RLS no
-bucket do Supabase para o operador autenticado subir, e a convenção de path
-(`occurrences/{occurrence_id}/{media_id}.{ext}`). A construir.
+### ✅ 4. Bucket privado + RLS (épico de Storage)
+`path` guarda o caminho do objeto (não URL pública). Bucket `sentinel-media` privado;
+operador autenticado **sobe** (INSERT) e **lê apenas o que ele mesmo enviou** (SELECT
+por `owner_id`); leitura ampla no painel via `service_role`. Convenção de path:
+`occurrences/{occurrence_id}/{media_id}.{ext}`.
 
 ---
 
 ## Superfície de API por prioridade
 
 > Convenção: prefixo `/api/v1/`, JSON, todas autenticadas (Bearer JWT).
+> Contratos completos (request/response, campos, erros): `STATUS_PROJETO.md`.
 
-### 🔜 P1 — Identidade
+### ✅ P1 — Identidade
 
 **`GET /me`** — perfil do operador autenticado. O app chama no startup.
+
 ```json
 { "id": "...", "name": "...", "role": "agente",
   "municipality_id": "...", "photo_path": "..." }
 ```
 
-### 🔜 P2 — Catálogo offline (destrava a criação de ocorrência no app)
+### ✅ P2 — Catálogo offline (destrava a criação de ocorrência no app)
 
-O app precisa baixar os catálogos para selecionar offline. Padrão de **delta sync**
+O app baixa os catálogos para selecionar offline. Padrão de **delta sync**
 por `updated_since`.
 
 **`GET /catalog/observables?updated_since=<iso8601>`**
@@ -73,29 +77,33 @@ por `updated_since`.
   "deleted_ids": [ "..." ]
 }
 ```
-- `items`: criados/alterados desde `updated_since`.
-- `deleted_ids`: removidos desde então (exige soft-delete) — o app apaga localmente.
-- App guarda `server_time` e usa como próximo `updated_since`.
 
-> Pré-requisito: provisionamento de usuários + admin/seed mínimo para popular o catálogo.
+- `items`: criados/alterados desde `updated_since`.
+- `deleted_ids`: removidos desde então (soft-delete) — o app apaga localmente.
+- App guarda `server_time` e usa como próximo `updated_since`.
+- Sem `updated_since`: retorna todos os itens ativos; `deleted_ids` vazio.
+
+Seeds mínimos: `php artisan db:seed` (roles, municípios, categorias, observables).
 
 ### ✅ P3 — Sync de ocorrências
 
 `POST /occurrences/sync` — pronto e produtizado (auth, `reported_by` do token,
-timestamps, `synced_at`). Resposta `data.ids` inalterada.
+timestamps, `synced_at`). Resposta `data.ids` na ordem do payload.
 
-### 🔜 P4 — Check-ins (presença do operador)
+### ✅ P4 — Check-ins (presença do operador)
 
 **`POST /check-ins/sync`** — mesmo padrão offline-first/idempotente do occurrences.
+
 ```json
 { "check_ins": [
   { "id": "<uuid>", "latitude": -3.1, "longitude": -60.0,
     "accuracy": 8.5, "captured_at": "2026-06-12T09:00:00Z", "note": null }
 ] }
 ```
-- `user_id` do token (não do payload).
-- Resposta espelha o sync: `{ "data": { "synced_count", "ids" } }`.
-- Nova tabela `check_ins` + migration.
+
+- `user_id` derivado do token (não do payload).
+- `synced_at` preenchido pelo servidor; valor do cliente ignorado.
+- Resposta: `{ "data": { "synced_count", "created_count", "updated_count", "ids" } }`.
 
 ### 🔜 P5 — Inbox de tasks (fluxo top-down)
 
@@ -111,8 +119,8 @@ timestamps, `synced_at`). Resposta `data.ids` inalterada.
 ## O que NÃO entra agora
 
 A API do **painel web** (CRUD admin, triagem, kanban, atribuição de `assigned_to`)
-**não bloqueia o app** — o app não consome essas rotas. Exceção: um admin/seed
-mínimo de catálogo é pré-requisito para testar o app de ponta a ponta.
+**não bloqueia o app** — o app não consome essas rotas. Seeds de catálogo bastam
+para desenvolvimento e teste do app de ponta a ponta.
 
 ---
 
@@ -127,9 +135,11 @@ nome do bucket, política RLS, convenção de path. (Ver épico de Storage.)
 ## Ordem de execução sugerida (backend)
 
 1. ✅ Auth + `reported_by` do token + timestamps/`synced_at`.
-2. 🔜 Provisionamento de usuários (`auth.users` + `public.users`) + seeds.
-3. 🔜 `GET /me`.
-4. 🔜 Catálogo (delta sync) + admin/seed mínimo.
-5. 🔜 Storage privado + RLS.
-6. 🔜 Check-ins.
+2. ✅ Provisionamento de usuários (`auth.users` + `public.users`) + seeds.
+3. ✅ `GET /me`.
+4. ✅ Catálogo (delta sync) + admin/seed mínimo.
+5. ✅ Storage privado + RLS.
+6. ✅ Check-ins.
 7. 🔜 Inbox de tasks (depende do painel publicar tasks).
+
+**Próximo foco (app):** consumir esta API + upload TUS (épico E10 no Linear).
