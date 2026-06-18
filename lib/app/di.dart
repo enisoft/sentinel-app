@@ -23,6 +23,7 @@ import '../data/repositories/sync_queue_repository.dart';
 import '../data/services/bootstrap_service.dart';
 import '../data/services/capture_occurrence_service.dart';
 import '../data/services/catalog_sync_service.dart';
+import '../data/services/occurrence_sync_coordinator.dart';
 import '../data/services/occurrence_sync_service.dart';
 import '../domain/gateways/auth_gateway.dart';
 import '../domain/gateways/media_uploader.dart';
@@ -73,6 +74,7 @@ Future<void> configureDependenciesForTesting(
   CameraSource? cameraSource,
   LocationSource? locationSource,
   HashService? hashService,
+  OccurrenceSyncCoordinator? occurrenceSyncCoordinator,
 }) async {
   await getIt.reset();
 
@@ -94,6 +96,7 @@ Future<void> configureDependenciesForTesting(
     apiClient: apiClient,
     syncGateway: syncGateway,
     mediaUploader: mediaUploader,
+    occurrenceSyncCoordinator: occurrenceSyncCoordinator,
   );
 
   _registerCaptureServices(
@@ -109,6 +112,7 @@ Future<void> _registerCore(
   ApiClient? apiClient,
   SyncGateway? syncGateway,
   MediaUploader? mediaUploader,
+  OccurrenceSyncCoordinator? occurrenceSyncCoordinator,
 }) async {
   getIt.registerSingleton<AppDatabase>(db);
   getIt.registerLazySingleton(() => OccurrenceRepository(getIt()));
@@ -154,6 +158,17 @@ Future<void> _registerCore(
       authGateway: getIt(),
     ),
   );
+
+  if (occurrenceSyncCoordinator != null) {
+    getIt.registerSingleton<OccurrenceSyncCoordinator>(occurrenceSyncCoordinator);
+  } else {
+    getIt.registerLazySingleton<OccurrenceSyncCoordinator>(
+      () => DefaultOccurrenceSyncCoordinator(
+        syncService: getIt(),
+        queueRepository: getIt(),
+      ),
+    );
+  }
 
   getIt.registerLazySingleton(
     () => OperatorProfileRepository(getIt(), getIt()),

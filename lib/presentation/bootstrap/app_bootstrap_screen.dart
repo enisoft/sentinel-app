@@ -4,7 +4,7 @@ import '../../app/di.dart';
 import '../../core/auth/auth_messages.dart';
 import '../../data/remote/api_exception.dart';
 import '../../data/services/bootstrap_service.dart';
-import '../../data/services/occurrence_sync_service.dart';
+import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import '../capture/capture_home_screen.dart';
 
@@ -39,8 +39,8 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       final result = await service.run();
       if (!mounted) return;
 
-      final syncResult = await getIt<OccurrenceSyncService>().processPending();
-      if (syncResult.unauthorized) {
+      final syncResult = await getIt<OccurrenceSyncCoordinator>().syncNow();
+      if (syncResult?.unauthorized == true) {
         return;
       }
 
@@ -120,4 +120,4 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     );
   }
 }
-
+

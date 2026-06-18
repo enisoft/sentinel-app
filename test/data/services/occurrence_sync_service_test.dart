@@ -304,4 +304,33 @@ void main() {
     final occurrence = await occurrenceRepo.getById('occ-retry');
     expect(occurrence!.syncState, SyncState.synced);
   });
+
+  test('processPending ignores unconfirmed drafts', () async {
+    await occurrenceRepo.createOccurrence(
+      id: 'draft-only',
+      title: '',
+      description: '',
+      status: 'draft',
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1),
+    );
+    await occurrenceRepo.attachMedia(
+      id: 'media-draft',
+      occurrenceId: 'draft-only',
+      mediaType: 'image',
+      localPath: '/tmp/photo-draft.jpg',
+      mimeType: 'image/jpeg',
+    );
+    fakeGateway.confirmedIds = ['draft-only'];
+
+    final result = await service.processPending();
+
+    expect(result.synced, 0);
+    expect(result.failed, 0);
+    expect(result.skipped, 0);
+    expect(fakeGateway.syncCallCount, 0);
+    final occurrence = await occurrenceRepo.getById('draft-only');
+    expect(occurrence!.status, 'draft');
+    expect(occurrence.syncState, SyncState.localSaved);
+  });
 }

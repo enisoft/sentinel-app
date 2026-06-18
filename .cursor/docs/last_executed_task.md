@@ -1,123 +1,117 @@
-# Última tarefa executada — Correção logout indevido offline (ENI-31 passo 6)
+# Última tarefa executada — ENI-41 / E10.3a: worker de sync sob demanda + estado observável
 
-Pedido: corrigir logout indevido quando OFFLINE no bootstrap (`GET /me`). Escopo fechado — distinguir falha de rede vs 401, bootstrap offline-tolerante com cache Drift (ENI-27), testes + roteiro de verificação device G56.
+**Status: DONE** (Linear ENI-41 fechado em 2026-06-18)
 
-Data: 2026-06-18  
-Bug: com Wi‑Fi desligado, falha de rede no `/me` expulsava o operador (tratada como sessão inválida). Crítico para app offline-first.
+Pedido: coordenador de sync chamável sob demanda sobre `OccurrenceSyncService.processPending`, estado observável (idle/syncing/lastResult/pendentes), guard de reentrância, botão na home, DI + testes. Sem FGS/nativo (ENI-42).
 
 ---
 
-## Correção aplicada
+## Implementação
 
-### 1. `ApiException` + `ApiClient` — rede ≠ 401
+### 1. `OccurrenceSyncCoordinator` + estado
 
-| Caso | Comportamento |
-|------|---------------|
-| `401` (resposta HTTP do servidor) | `isUnauthorized = true` → `signOut` (inalterado) |
-| `SocketException`, `ClientException`, timeout (`408`) | `isNetworkError = true` → **nunca** desloga |
-| Token ausente localmente | `401` local (sessão realmente inválida) |
+| Componente | Descrição |
+|------------|-----------|
+| `OccurrenceSyncCoordinatorState` | `status` (idle/syncing), `lastResult` (sucesso/erro + timestamp), `pendingCount` |
+| `DefaultOccurrenceSyncCoordinator` | Orquestra `processPending()`; escuta `watchPending()` para contagem |
+| Guard de reentrância | `_running` — chamada concorrente retorna `null` sem iniciar segundo ciclo |
+| `FakeOccurrenceSyncCoordinator` | Fake controlável para testes (barreira, contador de chamadas) |
 
-`ApiClient._authorizedRequest` agora encapsula exceções de transporte em `ApiException.network()` / `isNetworkError: true`.
+### 2. DI
 
-### 2. `BootstrapService` — offline-tolerante
+- Produção: `DefaultOccurrenceSyncCoordinator` registrado como `OccurrenceSyncCoordinator` (lazy singleton).
+- Testing: `configureDependenciesForTesting(..., occurrenceSyncCoordinator: fake)` aceita override.
 
-| Cenário `/me` | Resultado |
-|---------------|-----------|
-| Rede OK | `fetchAndCache()` → perfil atualizado no Drift |
-| Rede falha + perfil em cache | `profileLoaded: true` → entra no app com cache |
-| Rede falha + sem cache (primeiro acesso) | `profileLoaded: false`, mensagem clara — **sem** `signOut` |
-| `401` real | propaga → `signOut` na tela de bootstrap |
+### 3. Pontos de disparo migrados
 
-Catálogo: mantém tolerância existente (banner/retry se sync falhar por rede).
+| Local | Antes | Depois |
+|-------|-------|--------|
+| `AppBootstrapScreen` | `OccurrenceSyncService.processPending()` | `OccurrenceSyncCoordinator.syncNow()` |
+| `OccurrenceDraftFormScreen` | fire-and-forget `processPending()` | fire-and-forget `syncNow()` |
+| `CaptureHomeScreen` | — | botão **Sincronizar agora** + `ValueListenableBuilder` |
 
-### 3. `AppBootstrapScreen`
+### 4. UI mínima (`CaptureHomeScreen`)
 
-- `signOut` **somente** em `ApiException.isUnauthorized`.
-- Removido catch genérico que poderia mascarar erros; rede sem cache vem do `BootstrapService` com mensagem dedicada.
+- Botão `sync_now_button`: dispara `syncNow()`, desabilitado enquanto sincroniza.
+- Texto `N pendente(s)` quando `pendingCount > 0`.
+- Mensagem de última falha em vermelho quando `lastResult.success == false`.
 
-### Mensagem primeiro acesso offline
+### 5. Correção pós-debug manual — rascunhos fora do sync
 
-```
-Sem conexão. Conecte-se à internet para o primeiro acesso.
-```
+Decisão: só ocorrências **confirmadas** (`status = pending`) entram na fila; rascunhos ficam locais.
 
-(`lib/core/bootstrap/bootstrap_messages.dart`)
+- `SyncQueueRepository.getPendingOccurrences()` filtra `status = pending`.
+- Evita rascunhos abandonados irem ao sync, falharem com 422 (`validation:`) e ficarem presos no contador.
 
 ---
 
 ## Testes automatizados
 
-**`flutter test` → 67 passed** (+7 novos)
+**`flutter test` → 75 passed**
 
 | Teste | Verifica |
 |-------|----------|
-| `api_client_test` — socket / client exception | `isNetworkError`, não `isUnauthorized` |
-| `api_client_test` — timeout 408 | `isNetworkError` |
-| `bootstrap_service_test` — rede + cache | `profileLoaded: true` |
-| `bootstrap_service_test` — 401 | propaga para signOut |
-| `bootstrap_service_test` — rede sem cache | mensagem primeiro acesso |
-| `app_bootstrap_screen_test` — rede + cache | permanece logado, chega na captura |
-| `app_bootstrap_screen_test` — rede sem cache | mensagem offline, **não** desloga |
-| `app_bootstrap_screen_test` — 401 | desloga (ENI-27, inalterado) |
+| `occurrence_sync_coordinator_test` (5) | disparo, reentrância, falha, pendentes, fila vazia |
+| `getPending excludes unconfirmed drafts` | rascunho não conta na fila |
+| `processPending ignores unconfirmed drafts` | sync não toca `status = draft` |
+| `draft capture is not in sync pending queue until confirmed` | captura sem confirmar → fila 0 |
+| Demais suítes | bootstrap, capture flow, occurrence sync — verdes |
 
 ---
 
-## Verificação manual — device G56 (pendente)
-
-**Pré-requisito:** operador já logou online ao menos uma vez (cache Drift populado).
+## Verificação manual — device G56
 
 | # | Passo | Evidência | Status |
 |---|-------|-----------|--------|
-| 1 | Logar online (popula cache perfil + catálogo) | Drift `cached_operator_profiles` | ⬜ |
-| 2 | Ativar modo avião / desligar Wi‑Fi | Screenshot device | ⬜ |
-| 3 | Matar app e reabrir | Operador **continua logado**, vê home/captura | ⬜ |
-| 4 | Capturar offline | Item na fila (`sync_state = local_saved`) | ⬜ |
-| 5 | Religar rede | Sync automático → Postgres + drift `synced` | ⬜ |
+| 1 | Capturar OFFLINE → confirmar | Botão mostra pendente(s) | ✅ |
+| 2 | Religar rede → **Sincronizar agora** | sincronizando → ocioso | ✅ |
+| 3 | Postgres + Storage | ocorrência + objeto no bucket | ✅ |
+| 4 | Botão com fila vazia | não quebra; ocioso | ✅ |
+| 5 | Reinstalação limpa + fluxo completo | fila 0 após sync | ✅ |
+| 6 | Rascunho sem confirmar | não incrementa pendentes (pós-fix) | ✅ |
 
-**Isso fecha o passo 6 do ENI-31** quando evidências forem coladas.
+**Nota debug:** itens presos na fila eram rascunhos `draft` com `validation:` — corrigido pelo filtro `status = pending`.
 
 ### Comandos úteis (host)
 
-```bash
-# Drift no device
-adb -s ZF525FJSZ2 shell run-as com.example.sentinel_app cat databases/sentinel.db | sqlite3 -cmd ".tables" ""
+```powershell
+# Copiar Drift do device (pacote + caminho corretos)
+adb -s ZF525FJSZ2 exec-out run-as com.sentinel.sentinel_app cat app_flutter/sentinel.db > sentinel.db
+
+sqlite3 sentinel.db "SELECT status, sync_state, COUNT(*) FROM occurrences GROUP BY status, sync_state;"
 
 # Postgres pós-sync
-psql -h localhost -p 54322 -U postgres -d postgres -c \
-  "SELECT id, reported_by, synced_at FROM occurrences ORDER BY created_at DESC LIMIT 3;"
+psql -h localhost -p 54322 -U postgres -d postgres -c "SELECT id, reported_by, synced_at FROM occurrences ORDER BY created_at DESC LIMIT 3;"
 ```
 
 ---
 
 ## AUDITORIA
 
-**Escopo da mudança:** apenas **quando** `signOut` é chamado — rede não invalida mais a sessão.
+**Escopo:** orquestração Dart sobre fluxo já auditado (E10.1/10.2). Filtro de rascunhos é regra de fila local, sem mudança de contrato HTTP.
 
-**Não alterado:** verificação do token JWT, refresh Supabase, secure storage, contrato 401 da API.
-
-**Veredito:** não escalar para audit — mudança cirúrgica na lógica de signOut (rede vs 401), coberta por testes + verificação device.
+**Veredito:** não escalar para audit — report + testes verdes + verificação device OK.
 
 ---
 
-## Arquivos alterados
+## Arquivos alterados / criados
 
 | Arquivo | Mudança |
 |---------|---------|
-| `lib/data/remote/api_exception.dart` | `isNetworkError`, factory `network()` |
-| `lib/data/remote/api_client.dart` | captura `SocketException` / `ClientException` / timeout |
-| `lib/core/bootstrap/bootstrap_messages.dart` | mensagem primeiro acesso offline |
-| `lib/data/services/bootstrap_service.dart` | fallback cache Drift em falha de rede |
-| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | signOut só em 401 |
-| `test/data/remote/api_client_test.dart` | +2 testes rede |
-| `test/data/services/bootstrap_service_test.dart` | novo — 3 testes |
-| `test/presentation/bootstrap/app_bootstrap_screen_test.dart` | +2 testes rede |
+| `lib/core/sync/occurrence_sync_coordinator_state.dart` | **novo** — modelos de estado |
+| `lib/core/capture/occurrence_lifecycle_status.dart` | **novo** — `draft` / `pending` |
+| `lib/data/services/occurrence_sync_coordinator.dart` | **novo** — interface + implementação |
+| `lib/data/fakes/fake_occurrence_sync_coordinator.dart` | **novo** — fake controlável |
+| `lib/data/fakes/fake_sync_gateway.dart` | `onBeforeSync` para testes de reentrância |
+| `lib/data/repositories/sync_queue_repository.dart` | fila só `status = pending` |
+| `lib/data/services/capture_occurrence_service.dart` | constantes de lifecycle |
+| `lib/app/di.dart` | registro do coordinator |
+| `lib/presentation/capture/capture_home_screen.dart` | botão sync + estado observável |
+| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | usa coordinator |
+| `lib/presentation/capture/occurrence_draft_form_screen.dart` | usa coordinator |
+| `test/data/services/occurrence_sync_coordinator_test.dart` | **novo** — 5 testes |
+| `test/data/repositories/repositories_test.dart` | exclusão de drafts |
+| `test/data/services/capture_occurrence_service_test.dart` | draft fora da fila |
+| `test/data/services/occurrence_sync_service_test.dart` | `processPending` ignora draft |
+| `test/presentation/capture/capture_flow_test.dart` | expectativa pré-confirm |
 | `.cursor/docs/last_executed_task.md` | este relatório |
-
----
-
-<details>
-<summary>Histórico — ENI-31 validação E10, ENI-32, ENI-36</summary>
-
-Ver commits anteriores e `.cursor/docs/audit_20260618_eni29.md`.
-
-</details>

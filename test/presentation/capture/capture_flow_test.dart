@@ -71,8 +71,7 @@ void main() {
     expect(find.byKey(const Key('category_field')), findsOneWidget);
 
     final pendingBeforeConfirm = await queueRepo.getPending();
-    expect(pendingBeforeConfirm.occurrences, hasLength(1));
-    expect(pendingBeforeConfirm.occurrences.single.syncState, SyncState.localSaved);
+    expect(pendingBeforeConfirm.occurrences, isEmpty);
   });
 
   testWidgets('confirming form enqueues occurrence for sync', (tester) async {

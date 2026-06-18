@@ -201,6 +201,31 @@ void main() {
       expect(pending.totalCount, 2);
     });
 
+    test('getPending excludes unconfirmed drafts', () async {
+      await occurrenceRepo.createOccurrence(
+        id: 'draft-occ',
+        title: '',
+        description: '',
+        status: 'draft',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 1),
+      );
+
+      await occurrenceRepo.createOccurrence(
+        id: 'confirmed-occ',
+        title: 'T',
+        description: 'D',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 2),
+      );
+
+      final pending = await queueRepo.getPending();
+
+      expect(pending.occurrences.map((o) => o.id), ['confirmed-occ']);
+      expect(pending.totalCount, 1);
+    });
+
     test('watchPending emits as items enter, change state, and leave queue', () async {
       final emissions = <PendingSyncSnapshot>[];
       late StreamSubscription<PendingSyncSnapshot> subscription;

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 
+import '../../core/capture/occurrence_lifecycle_status.dart';
 import '../../core/sync/sync_state.dart';
 import '../local/app_database.dart';
 
@@ -60,6 +61,9 @@ class SyncQueueRepository {
   Future<List<Occurrence>> getPendingOccurrences() {
     return (_db.select(_db.occurrences)
           ..where((t) => t.syncState.isNotValue(SyncState.synced.storageValue))
+          ..where(
+            (t) => t.status.equals(OccurrenceLifecycleStatus.pending),
+          )
           ..orderBy([(t) => OrderingTerm.asc(t.createdLocalAt)]))
         .get();
   }

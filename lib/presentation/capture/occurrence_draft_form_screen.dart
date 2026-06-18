@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/di.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../data/services/capture_occurrence_service.dart';
-import '../../data/services/occurrence_sync_service.dart';
+import '../../data/services/occurrence_sync_coordinator.dart';
 
 /// Form mínimo pós-captura — nunca bloqueia o disparo anterior.
 class OccurrenceDraftFormScreen extends StatefulWidget {
@@ -73,7 +73,7 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
         note: _emptyToNull(_noteController.text),
       );
 
-      unawaited(getIt<OccurrenceSyncService>().processPending());
+      unawaited(getIt<OccurrenceSyncCoordinator>().syncNow());
 
       if (!mounted) return;
       Navigator.of(context).pop();

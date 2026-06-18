@@ -20,6 +20,7 @@ class FakeSyncGateway implements SyncGateway {
   Object? _syncException;
   Object? _checkInSyncException;
   final MediaUploader? _mediaUploader;
+  Future<void> Function()? onBeforeSync;
 
   int syncCallCount = 0;
   int checkInSyncCallCount = 0;
@@ -48,6 +49,9 @@ class FakeSyncGateway implements SyncGateway {
   Future<List<String>> syncOccurrences({required List<String> occurrenceIds}) async {
     syncCallCount++;
     lastSyncIds = List<String>.from(occurrenceIds);
+    if (onBeforeSync != null) {
+      await onBeforeSync!();
+    }
     if (_syncException != null) throw _syncException!;
     return _confirmedIds.where(occurrenceIds.contains).toList();
   }

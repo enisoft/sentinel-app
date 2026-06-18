@@ -71,6 +71,17 @@ void main() {
       expect(media.single.contentHash, startsWith('test-sha256:'));
     });
 
+    test('draft capture is not in sync pending queue until confirmed', () async {
+      final draft = await captureService.captureDraft();
+
+      final pending = await queueRepo.getPending();
+      expect(pending.occurrences, isEmpty);
+
+      final occurrence = await occurrenceRepo.getById(draft.occurrence.id);
+      expect(occurrence!.status, 'draft');
+      expect(occurrence.syncState, SyncState.localSaved);
+    });
+
     test('form update and confirm enqueue occurrence in pending sync', () async {
       final draft = await captureService.captureDraft();
 

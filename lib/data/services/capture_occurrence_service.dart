@@ -1,3 +1,4 @@
+import '../../core/capture/occurrence_lifecycle_status.dart';
 import '../../domain/services/camera_source.dart';
 import '../../domain/services/hash_service.dart';
 import '../../domain/services/location_source.dart';
@@ -30,7 +31,7 @@ class CaptureOccurrenceService {
     final occurrence = await _occurrenceRepository.createOccurrence(
       title: '',
       description: '',
-      status: 'draft',
+      status: OccurrenceLifecycleStatus.draft,
       priority: 'medium',
       occurredAt: capture.capturedAt,
       latitude: position.latitude,
@@ -73,7 +74,7 @@ class CaptureOccurrenceService {
     );
   }
 
-  /// Confirma o rascunho — permanece em `local_saved` e entra na fila pendente.
+  /// Confirma o rascunho — `status = pending`, entra na fila de sync.
   Future<Occurrence> confirmDraft({
     required String occurrenceId,
     String? categoryId,
@@ -86,7 +87,7 @@ class CaptureOccurrenceService {
       observableId: observableId,
       description: note,
       title: note?.isNotEmpty == true ? note! : 'Ocorrência',
-      status: 'pending',
+      status: OccurrenceLifecycleStatus.pending,
     );
   }
 }

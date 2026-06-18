@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../core/sync/occurrence_sync_coordinator_state.dart';
 import '../../data/services/capture_occurrence_service.dart';
+import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import 'occurrence_draft_form_screen.dart';
 
@@ -11,12 +13,14 @@ class CaptureHomeScreen extends StatefulWidget {
     super.key,
     this.captureService,
     this.authGateway,
+    this.syncCoordinator,
     this.catalogSyncWarning,
     this.onRetryCatalogSync,
   });
 
   final CaptureOccurrenceService? captureService;
   final AuthGateway? authGateway;
+  final OccurrenceSyncCoordinator? syncCoordinator;
   final String? catalogSyncWarning;
   final VoidCallback? onRetryCatalogSync;
 
@@ -31,6 +35,13 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
       widget.captureService ?? getIt<CaptureOccurrenceService>();
 
   AuthGateway get _auth => widget.authGateway ?? getIt<AuthGateway>();
+
+  OccurrenceSyncCoordinator get _syncCoordinator =>
+      widget.syncCoordinator ?? getIt<OccurrenceSyncCoordinator>();
+
+  Future<void> _onSyncNow() async {
+    await _syncCoordinator.syncNow();
+  }
 
   Future<void> _onCapturePressed() async {
     if (_capturing) return;
@@ -126,6 +137,52 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
               bottom: 32,
               child: Column(
                 children: [
+                  ValueListenableBuilder<OccurrenceSyncCoordinatorState>(
+                    valueListenable: _syncCoordinator.state,
+                    builder: (context, syncState, _) {
+                      return Column(
+                        children: [
+                          if (syncState.pendingCount > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                '${syncState.pendingCount} pendente(s)',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: Colors.white70),
+                              ),
+                            ),
+                          if (syncState.lastResult != null &&
+                              !syncState.lastResult!.success)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                syncState.lastResult!.errorMessage ??
+                                    'Falha na sincronização',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: Colors.redAccent),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: FilledButton.tonal(
+                              key: const Key('sync_now_button'),
+                              onPressed: syncState.isSyncing ? null : _onSyncNow,
+                              child: Text(
+                                syncState.isSyncing
+                                    ? 'Sincronizando...'
+                                    : 'Sincronizar agora',
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                   Text(
                     'Toque para capturar',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
