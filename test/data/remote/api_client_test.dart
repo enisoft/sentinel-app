@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -126,7 +127,46 @@ void main() {
         throwsA(
           isA<ApiException>()
               .having((e) => e.statusCode, 'status', 408)
+              .having((e) => e.isNetworkError, 'isNetworkError', isTrue)
               .having((e) => e.message, 'message', contains('Tempo esgotado')),
+        ),
+      );
+    });
+
+    test('socket failure throws network ApiException', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((_) async {
+          throw const SocketException('Network is unreachable');
+        }),
+      );
+
+      expect(
+        () => client.getMe(),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.isNetworkError, 'isNetworkError', isTrue)
+              .having((e) => e.isUnauthorized, 'isUnauthorized', isFalse),
+        ),
+      );
+    });
+
+    test('client exception throws network ApiException', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((_) async {
+          throw http.ClientException('Connection refused');
+        }),
+      );
+
+      expect(
+        () => client.getMe(),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.isNetworkError, 'isNetworkError', isTrue)
+              .having((e) => e.isUnauthorized, 'isUnauthorized', isFalse),
         ),
       );
     });

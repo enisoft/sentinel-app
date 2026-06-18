@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -101,7 +102,15 @@ class ApiClient {
     try {
       response = await send(uri, headers).timeout(_requestTimeout);
     } on TimeoutException {
-      throw ApiException(408, 'Tempo esgotado na comunicação com o servidor.');
+      throw ApiException(
+        408,
+        'Tempo esgotado na comunicação com o servidor.',
+        isNetworkError: true,
+      );
+    } on SocketException catch (e) {
+      throw ApiException.network(e.message);
+    } on http.ClientException catch (e) {
+      throw ApiException.network(e.message);
     }
 
     if (response.statusCode == 401) {

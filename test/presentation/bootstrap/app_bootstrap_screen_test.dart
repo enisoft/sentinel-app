@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sentinel_app/app/di.dart';
 import 'package:sentinel_app/core/auth/auth_messages.dart';
+import 'package:sentinel_app/core/bootstrap/bootstrap_messages.dart';
 import 'package:sentinel_app/core/config/app_config.dart';
 import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
@@ -49,6 +52,66 @@ void main() {
       MaterialApp(home: AuthGate(authGateway: auth)),
     );
   }
+
+  Future<void> seedCachedProfile() async {
+    await db.into(db.cachedOperatorProfiles).insertOnConflictUpdate(
+          CachedOperatorProfilesCompanion.insert(
+            id: 'user-1',
+            name: 'Operador',
+            role: 'agente',
+            municipalityId: const Value('mun-1'),
+            photoPath: const Value(null),
+            cachedAt: DateTime.utc(2026, 6, 18),
+          ),
+        );
+  }
+
+  testWidgets('network error on /me with cached profile stays signed in',
+      (tester) async {
+    await seedCachedProfile();
+
+    await pumpAuthGate(
+      tester,
+      MockClient((request) async {
+        final path = request.url.path;
+        if (path.endsWith('/me')) {
+          throw const SocketException('Network is unreachable');
+        }
+        if (path.contains('/catalog/')) {
+          throw http.ClientException('Connection refused');
+        }
+        return http.Response('', 404);
+      }),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(auth.isSignedIn, isTrue);
+    expect(find.byKey(const Key('capture_button')), findsOneWidget);
+    expect(find.text('Sincronizando...'), findsNothing);
+    expect(find.byKey(const Key('login_submit')), findsNothing);
+  });
+
+  testWidgets('network error without cached profile shows offline first access',
+      (tester) async {
+    await pumpAuthGate(
+      tester,
+      MockClient((request) async {
+        if (request.url.path.endsWith('/me')) {
+          throw const SocketException('Network is unreachable');
+        }
+        return http.Response('', 404);
+      }),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(auth.isSignedIn, isTrue);
+    expect(find.text(BootstrapMessages.offlineFirstAccess), findsOneWidget);
+    expect(find.byKey(const Key('login_submit')), findsNothing);
+  });
 
   testWidgets('401 on /me ends loading and shows session expired on login',
       (tester) async {
