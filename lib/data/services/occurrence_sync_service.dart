@@ -11,6 +11,7 @@ import '../../domain/gateways/auth_gateway.dart';
 import '../../domain/gateways/sync_gateway.dart';
 import '../local/app_database.dart';
 import '../remote/api_exception.dart';
+import '../remote/media_upload_exception.dart';
 import '../repositories/occurrence_repository.dart';
 import '../repositories/sync_queue_repository.dart';
 
@@ -28,7 +29,7 @@ class OccurrenceSyncResult {
   final bool unauthorized;
 }
 
-/// Orquestra a fila offline E8 — stub de mídia, POST JSON, confirmação por data.ids.
+/// Orquestra a fila offline E8 — upload TUS, POST JSON, confirmação por data.ids.
 class OccurrenceSyncService {
   OccurrenceSyncService({
     required SyncQueueRepository queueRepository,
@@ -59,6 +60,51 @@ class OccurrenceSyncService {
 
       if (_isNonRetryable(occurrence)) {
         skipped++;
+        continue;
+      }
+
+      try {
+        await _advanceMedia(occurrence.id);
+      } on MediaUploadException catch (e) {
+        if (e.isUnauthorized) {
+          await _auth.signOut(loginNotice: AuthMessages.sessionExpired);
+          return OccurrenceSyncResult(
+            synced: synced,
+            failed: failed,
+            skipped: skipped,
+            unauthorized: true,
+          );
+        }
+        await _occurrences.recordFailure(
+          occurrence.id,
+          SyncPhase.mediaUploading,
+          e.message,
+        );
+        failed++;
+        continue;
+      } on SocketException catch (e) {
+        await _occurrences.recordFailure(
+          occurrence.id,
+          SyncPhase.mediaUploading,
+          e.message,
+        );
+        failed++;
+        continue;
+      } on http.ClientException catch (e) {
+        await _occurrences.recordFailure(
+          occurrence.id,
+          SyncPhase.mediaUploading,
+          e.message,
+        );
+        failed++;
+        continue;
+      } on TimeoutException catch (e) {
+        await _occurrences.recordFailure(
+          occurrence.id,
+          SyncPhase.mediaUploading,
+          e.message ?? 'timeout',
+        );
+        failed++;
         continue;
       }
 
@@ -141,7 +187,7 @@ class OccurrenceSyncService {
         (occurrence.failedReason?.startsWith(_validationPrefix) ?? false);
   }
 
-  Future<void> _advanceToJsonSync(String id) async {
+  Future<void> _advanceMedia(String id) async {
     var occurrence = await _occurrences.getById(id);
     if (occurrence == null) return;
 
@@ -150,15 +196,27 @@ class OccurrenceSyncService {
     }
 
     if (occurrence.syncState == SyncState.localSaved) {
-      await _occurrences.ensureStubRemotePaths(id);
       final hasMedia = await _occurrences.hasMedia(id);
       if (hasMedia) {
         occurrence = await _occurrences.beginMediaUpload(id);
-        occurrence = await _occurrences.markMediaDone(id);
       } else {
-        occurrence = await _occurrences.markMediaDone(id);
+        await _occurrences.markMediaDone(id);
+        return;
       }
     }
+
+    if (occurrence.syncState == SyncState.mediaUploading) {
+      await _gateway.uploadOccurrenceMedia(occurrenceId: id);
+      if (!await _occurrences.allMediaUploaded(id)) {
+        throw MediaUploadException(null, 'Upload incompleto: mídia sem remote_path.');
+      }
+      await _occurrences.markMediaDone(id);
+    }
+  }
+
+  Future<void> _advanceToJsonSync(String id) async {
+    final occurrence = await _occurrences.getById(id);
+    if (occurrence == null) return;
 
     if (occurrence.syncState == SyncState.mediaDone) {
       await _occurrences.beginJsonSync(id);

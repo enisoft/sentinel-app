@@ -1,7 +1,7 @@
 import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
 
-/// Câmera em memória para fase shell — retorna caminho e metadados determinísticos.
+/// Câmera em memória para testes unitários — sem I/O; path configurável.
 class FakeCameraSource implements CameraSource {
   FakeCameraSource({
     this.nextPath = '/fake/captures/photo.jpg',

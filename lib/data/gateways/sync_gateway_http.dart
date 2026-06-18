@@ -1,3 +1,4 @@
+import '../../domain/gateways/media_uploader.dart';
 import '../../domain/gateways/sync_gateway.dart';
 import '../local/app_database.dart';
 import '../remote/api_client.dart';
@@ -9,18 +10,21 @@ class SyncGatewayHttp implements SyncGateway {
   SyncGatewayHttp({
     required ApiClient apiClient,
     required OccurrenceRepository occurrenceRepository,
+    required MediaUploader mediaUploader,
     SyncPayloadSerializer serializer = const SyncPayloadSerializer(),
   })  : _api = apiClient,
         _occurrences = occurrenceRepository,
+        _mediaUploader = mediaUploader,
         _serializer = serializer;
 
   final ApiClient _api;
   final OccurrenceRepository _occurrences;
+  final MediaUploader _mediaUploader;
   final SyncPayloadSerializer _serializer;
 
   @override
-  Future<void> uploadOccurrenceMedia({required String occurrenceId}) async {
-    // TUS real = ENI-29; stub de path tratado pelo orquestrador.
+  Future<void> uploadOccurrenceMedia({required String occurrenceId}) {
+    return _mediaUploader.uploadOccurrenceMedia(occurrenceId: occurrenceId);
   }
 
   @override

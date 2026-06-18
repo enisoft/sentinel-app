@@ -7,13 +7,14 @@ import '../data/auth/secure_key_value_store.dart';
 import '../data/auth/secure_supabase_local_storage.dart';
 import '../data/auth/supabase_session_keys.dart';
 import '../data/fakes/fake_camera_source.dart';
+import '../data/fakes/fake_device_camera_source.dart';
 import '../data/fakes/fake_hash_service.dart';
 import '../data/fakes/fake_location_source.dart';
-import '../data/fakes/fake_sync_gateway.dart';
 import '../data/gateways/supabase_auth_gateway.dart';
 import '../data/gateways/sync_gateway_http.dart';
 import '../data/local/app_database.dart';
 import '../data/remote/api_client.dart';
+import '../data/remote/tus_media_uploader.dart';
 import '../data/repositories/catalog_repository.dart';
 import '../data/repositories/check_in_repository.dart';
 import '../data/repositories/occurrence_repository.dart';
@@ -24,6 +25,7 @@ import '../data/services/capture_occurrence_service.dart';
 import '../data/services/catalog_sync_service.dart';
 import '../data/services/occurrence_sync_service.dart';
 import '../domain/gateways/auth_gateway.dart';
+import '../domain/gateways/media_uploader.dart';
 import '../domain/gateways/sync_gateway.dart';
 import '../domain/services/camera_source.dart';
 import '../domain/services/hash_service.dart';
@@ -67,6 +69,7 @@ Future<void> configureDependenciesForTesting(
   AuthGateway? authGateway,
   ApiClient? apiClient,
   SyncGateway? syncGateway,
+  MediaUploader? mediaUploader,
   CameraSource? cameraSource,
   LocationSource? locationSource,
   HashService? hashService,
@@ -90,6 +93,7 @@ Future<void> configureDependenciesForTesting(
     testConfig,
     apiClient: apiClient,
     syncGateway: syncGateway,
+    mediaUploader: mediaUploader,
   );
 
   _registerCaptureServices(
@@ -104,6 +108,7 @@ Future<void> _registerCore(
   AppConfig config, {
   ApiClient? apiClient,
   SyncGateway? syncGateway,
+  MediaUploader? mediaUploader,
 }) async {
   getIt.registerSingleton<AppDatabase>(db);
   getIt.registerLazySingleton(() => OccurrenceRepository(getIt()));
@@ -121,12 +126,23 @@ Future<void> _registerCore(
     () => apiClient ?? ApiClient(config: config, authGateway: getIt()),
   );
 
+  getIt.registerLazySingleton<MediaUploader>(
+    () =>
+        mediaUploader ??
+        TusMediaUploader(
+          config: config,
+          authGateway: getIt(),
+          occurrenceRepository: getIt(),
+        ),
+  );
+
   getIt.registerLazySingleton<SyncGateway>(
     () =>
         syncGateway ??
         SyncGatewayHttp(
           apiClient: getIt(),
           occurrenceRepository: getIt(),
+          mediaUploader: getIt(),
         ),
   );
 
@@ -152,7 +168,7 @@ Future<void> _registerCore(
 
 void _registerCaptureFakes() {
   _registerCaptureServices(
-    cameraSource: FakeCameraSource(),
+    cameraSource: FakeDeviceCameraSource(),
     locationSource: FakeLocationSource(),
     hashService: FakeHashService(),
   );

@@ -260,21 +260,29 @@ class OccurrenceRepository {
     return _requireOccurrence(id);
   }
 
-  /// Preenche `remote_path` stub para mídia sem upload TUS (E10.1).
-  Future<void> ensureStubRemotePaths(String occurrenceId) async {
-    final media = await getMedia(occurrenceId);
-    for (final item in media) {
-      if (item.remotePath != null) continue;
-      final ext = _extensionFromMimeType(item.mimeType);
-      final stubPath = 'occurrences/$occurrenceId/${item.id}.$ext';
-      await (_db.update(_db.occurrenceMedia)..where((t) => t.id.equals(item.id)))
-          .write(
-        OccurrenceMediaCompanion(remotePath: Value(stubPath)),
-      );
-    }
+  Future<void> setRemotePath(String mediaId, String remotePath) async {
+    await (_db.update(_db.occurrenceMedia)..where((t) => t.id.equals(mediaId)))
+        .write(
+      OccurrenceMediaCompanion(remotePath: Value(remotePath)),
+    );
   }
 
-  static String _extensionFromMimeType(String mimeType) {
+  Future<bool> allMediaUploaded(String occurrenceId) async {
+    final media = await getMedia(occurrenceId);
+    if (media.isEmpty) return true;
+    return media.every((m) => m.remotePath != null);
+  }
+
+  static String canonicalStoragePath({
+    required String occurrenceId,
+    required String mediaId,
+    required String mimeType,
+  }) {
+    final ext = extensionFromMimeType(mimeType);
+    return 'occurrences/$occurrenceId/$mediaId.$ext';
+  }
+
+  static String extensionFromMimeType(String mimeType) {
     return switch (mimeType) {
       'image/jpeg' => 'jpg',
       'image/png' => 'png',
