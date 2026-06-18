@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sentinel_app/core/config/app_config.dart';
 import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
+import 'package:sentinel_app/data/fakes/fake_media_uploader.dart';
 import 'package:sentinel_app/data/gateways/sync_gateway_http.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/remote/api_client.dart';
@@ -77,6 +78,7 @@ void main() {
     final gateway = SyncGatewayHttp(
       apiClient: apiClient,
       occurrenceRepository: occurrenceRepo,
+      mediaUploader: FakeMediaUploader(),
     );
 
     final ids = await gateway.syncOccurrences(

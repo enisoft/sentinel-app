@@ -4,9 +4,11 @@ import 'package:sentinel_app/core/auth/auth_messages.dart';
 import 'package:sentinel_app/core/sync/sync_phase.dart';
 import 'package:sentinel_app/core/sync/sync_state.dart';
 import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
+import 'package:sentinel_app/data/fakes/fake_media_uploader.dart';
 import 'package:sentinel_app/data/fakes/fake_sync_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/remote/api_exception.dart';
+import 'package:sentinel_app/data/remote/media_upload_exception.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/data/repositories/sync_queue_repository.dart';
 import 'package:sentinel_app/data/services/occurrence_sync_service.dart';
@@ -15,6 +17,7 @@ void main() {
   late AppDatabase db;
   late OccurrenceRepository occurrenceRepo;
   late SyncQueueRepository queueRepo;
+  late FakeMediaUploader fakeMediaUploader;
   late FakeSyncGateway fakeGateway;
   late FakeAuthGateway fakeAuth;
   late OccurrenceSyncService service;
@@ -23,7 +26,8 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     occurrenceRepo = OccurrenceRepository(db);
     queueRepo = SyncQueueRepository(db);
-    fakeGateway = FakeSyncGateway();
+    fakeMediaUploader = FakeMediaUploader(occurrenceRepository: occurrenceRepo);
+    fakeGateway = FakeSyncGateway(mediaUploader: fakeMediaUploader);
     fakeAuth = FakeAuthGateway();
     service = OccurrenceSyncService(
       queueRepository: queueRepo,
@@ -41,6 +45,8 @@ void main() {
   Future<void> seedOccurrence({
     required String id,
     bool withMedia = false,
+    String? mediaId,
+    int extraMedia = 0,
   }) async {
     await occurrenceRepo.createOccurrence(
       id: id,
@@ -52,11 +58,22 @@ void main() {
     );
     if (withMedia) {
       await occurrenceRepo.attachMedia(
+        id: mediaId ?? 'media-1-$id',
         occurrenceId: id,
         mediaType: 'image',
-        localPath: '/tmp/photo.jpg',
+        localPath: '/tmp/photo-$id.jpg',
         mimeType: 'image/jpeg',
       );
+      for (var i = 0; i < extraMedia; i++) {
+        await occurrenceRepo.attachMedia(
+          id: 'media-extra-$i-$id',
+          occurrenceId: id,
+          mediaType: 'image',
+          localPath: '/tmp/photo-extra-$i-$id.jpg',
+          mimeType: 'image/jpeg',
+          sortOrder: i + 1,
+        );
+      }
     }
   }
 
@@ -67,9 +84,108 @@ void main() {
     final result = await service.processPending();
 
     expect(result.synced, 1);
+    expect(fakeMediaUploader.uploadCallCount, 1);
+    expect(fakeGateway.syncCallCount, 1);
     final occurrence = await occurrenceRepo.getById('occ-sync');
     expect(occurrence!.syncState, SyncState.synced);
     expect(occurrence.syncedAt, isNotNull);
+  });
+
+  test('single media upload reaches media_done then json_syncing', () async {
+    await seedOccurrence(
+      id: 'occ-one-media',
+      withMedia: true,
+      mediaId: '8f14e45f-ceea-467f-a0f8-5c3b2e1a9d00',
+    );
+    fakeGateway.confirmedIds = [];
+
+    await service.processPending();
+
+    final media = await occurrenceRepo.getMedia('occ-one-media');
+    expect(
+      media.single.remotePath,
+      'occurrences/occ-one-media/8f14e45f-ceea-467f-a0f8-5c3b2e1a9d00.jpg',
+    );
+    final occurrence = await occurrenceRepo.getById('occ-one-media');
+    expect(occurrence!.syncState, SyncState.jsonSyncing);
+    expect(fakeMediaUploader.uploadCallCount, 1);
+    expect(fakeGateway.uploadCallCount, 1);
+    expect(fakeGateway.syncCallCount, 1);
+  });
+
+  test('two media items reach media_done only when both uploaded', () async {
+    await seedOccurrence(
+      id: 'occ-two-media',
+      withMedia: true,
+      mediaId: 'm1-two',
+      extraMedia: 1,
+    );
+    fakeGateway.confirmedIds = ['occ-two-media'];
+
+    final result = await service.processPending();
+
+    expect(result.synced, 1);
+    final media = await occurrenceRepo.getMedia('occ-two-media');
+    expect(media, hasLength(2));
+    expect(media.every((m) => m.remotePath != null), isTrue);
+    expect(
+      media[0].remotePath,
+      'occurrences/occ-two-media/m1-two.jpg',
+    );
+    expect(
+      media[1].remotePath,
+      'occurrences/occ-two-media/media-extra-0-occ-two-media.jpg',
+    );
+  });
+
+  test('media upload failure records media_uploading phase and retries partial',
+      () async {
+    const occId = 'occ-partial-fail';
+    await seedOccurrence(
+      id: occId,
+      withMedia: true,
+      mediaId: 'm1-partial',
+      extraMedia: 1,
+    );
+
+    fakeMediaUploader.onUpload = (id) async {
+      final items = await occurrenceRepo.getMedia(id);
+      final pending = items.where((m) => m.remotePath == null).toList();
+      if (pending.isEmpty) return;
+      final first = pending.first;
+      await occurrenceRepo.setRemotePath(
+        first.id,
+        OccurrenceRepository.canonicalStoragePath(
+          occurrenceId: id,
+          mediaId: first.id,
+          mimeType: first.mimeType,
+        ),
+      );
+      if (pending.length > 1) {
+        throw MediaUploadException(500, 'Falha no segundo arquivo.');
+      }
+    };
+
+    await service.processPending();
+
+    var occurrence = await occurrenceRepo.getById(occId);
+    expect(occurrence!.syncState, SyncState.failed);
+    expect(occurrence.failedPhase, SyncPhase.mediaUploading);
+    expect(occurrence.retryCount, 1);
+    expect(fakeGateway.syncCallCount, 0);
+
+    fakeMediaUploader.uploadException = null;
+    fakeGateway.confirmedIds = [occId];
+    fakeGateway.syncCallCount = 0;
+
+    final result = await service.processPending();
+
+    expect(result.synced, 1);
+    expect(fakeMediaUploader.uploadCallCount, 2);
+    final media = await occurrenceRepo.getMedia(occId);
+    expect(media.every((m) => m.remotePath != null), isTrue);
+    occurrence = await occurrenceRepo.getById(occId);
+    expect(occurrence!.syncState, SyncState.synced);
   });
 
   test('missing id in response keeps occurrence pending without synced', () async {
@@ -83,7 +199,7 @@ void main() {
     expect(occurrence.syncedAt, isNull);
   });
 
-  test('401 triggers signOut', () async {
+  test('401 on JSON triggers signOut', () async {
     await seedOccurrence(id: 'occ-401');
     fakeGateway.syncException = ApiException(401, 'Token inválido.');
 
@@ -91,6 +207,18 @@ void main() {
 
     expect(result.unauthorized, isTrue);
     expect(fakeAuth.isSignedIn, isFalse);
+    expect(fakeAuth.loginNotice, AuthMessages.sessionExpired);
+  });
+
+  test('401 on media upload triggers signOut', () async {
+    await seedOccurrence(id: 'occ-media-401', withMedia: true);
+    fakeMediaUploader.uploadException =
+        MediaUploadException(401, 'Token inválido.');
+
+    final result = await service.processPending();
+
+    expect(result.unauthorized, isTrue);
+    expect(fakeGateway.syncCallCount, 0);
     expect(fakeAuth.loginNotice, AuthMessages.sessionExpired);
   });
 

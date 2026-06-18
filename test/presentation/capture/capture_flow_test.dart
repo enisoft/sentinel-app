@@ -6,6 +6,7 @@ import 'package:sentinel_app/core/sync/sync_state.dart';
 import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
 import 'package:sentinel_app/data/fakes/fake_location_source.dart';
+import 'package:sentinel_app/data/fakes/fake_media_uploader.dart';
 import 'package:sentinel_app/data/fakes/fake_sync_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/repositories/catalog_repository.dart';
@@ -21,16 +22,19 @@ void main() {
   late OccurrenceRepository occurrenceRepo;
   late SyncQueueRepository queueRepo;
   late CatalogRepository catalogRepo;
+  late FakeMediaUploader fakeMediaUploader;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
+    fakeMediaUploader = FakeMediaUploader();
     await configureDependenciesForTesting(
       db,
       cameraSource: FakeCameraSource(),
       locationSource: FakeLocationSource(),
       hashService: FakeHashService(),
-      syncGateway: FakeSyncGateway(),
+      syncGateway: FakeSyncGateway(mediaUploader: fakeMediaUploader),
     );
+    fakeMediaUploader.occurrenceRepository = getIt<OccurrenceRepository>();
     captureService = getIt<CaptureOccurrenceService>();
     occurrenceRepo = getIt<OccurrenceRepository>();
     queueRepo = getIt<SyncQueueRepository>();
