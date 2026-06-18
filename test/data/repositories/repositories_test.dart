@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentinel_app/core/sync/sync_phase.dart';
@@ -197,6 +199,79 @@ void main() {
       expect(pending.checkIns.single.id, 'failed-ci');
       expect(pending.checkIns.single.retryCount, 1);
       expect(pending.totalCount, 2);
+    });
+
+    test('watchPending emits as items enter, change state, and leave queue', () async {
+      final emissions = <PendingSyncSnapshot>[];
+      late StreamSubscription<PendingSyncSnapshot> subscription;
+
+      subscription = queueRepo.watchPending().listen(emissions.add);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emissions, isNotEmpty);
+      expect(emissions.last.totalCount, 0);
+
+      await occurrenceRepo.createOccurrence(
+        id: 'stream-occ',
+        title: 'T',
+        description: 'D',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 1),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emissions.last.occurrences.map((o) => o.id), ['stream-occ']);
+      expect(emissions.last.occurrences.single.syncState, SyncState.localSaved);
+
+      await occurrenceRepo.attachMedia(
+        occurrenceId: 'stream-occ',
+        mediaType: 'image',
+        localPath: '/tmp/stream.jpg',
+        mimeType: 'image/jpeg',
+      );
+      await occurrenceRepo.beginMediaUpload('stream-occ');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        emissions.last.occurrences.single.syncState,
+        SyncState.mediaUploading,
+      );
+
+      await checkInRepo.createCheckIn(
+        id: 'stream-ci',
+        latitude: 1,
+        longitude: 2,
+        accuracy: 3,
+        capturedAt: DateTime.utc(2026, 1, 3),
+      );
+      await checkInRepo.beginJsonSync('stream-ci');
+      await checkInRepo.recordFailure(
+        'stream-ci',
+        SyncPhase.jsonSyncing,
+        'timeout',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emissions.last.totalCount, 2);
+      expect(emissions.last.checkIns.single.id, 'stream-ci');
+      expect(emissions.last.checkIns.single.syncState, SyncState.failed);
+
+      await occurrenceRepo.markMediaDone('stream-occ');
+      await occurrenceRepo.beginJsonSync('stream-occ');
+      await occurrenceRepo.markSynced('stream-occ');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emissions.last.occurrences, isEmpty);
+      expect(emissions.last.checkIns.single.id, 'stream-ci');
+
+      await checkInRepo.retry('stream-ci');
+      await checkInRepo.markSynced('stream-ci');
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emissions.last.totalCount, 0);
+
+      await subscription.cancel();
     });
   });
 }

@@ -5,23 +5,36 @@ import '../../domain/gateways/sync_gateway.dart';
 class FakeSyncGateway implements SyncGateway {
   FakeSyncGateway({
     List<String> confirmedIds = const [],
+    List<String> confirmedCheckInIds = const [],
     Object? syncException,
+    Object? checkInSyncException,
     MediaUploader? mediaUploader,
   })  : _confirmedIds = List<String>.from(confirmedIds),
+        _confirmedCheckInIds = List<String>.from(confirmedCheckInIds),
         _syncException = syncException,
+        _checkInSyncException = checkInSyncException,
         _mediaUploader = mediaUploader;
 
   List<String> _confirmedIds;
+  List<String> _confirmedCheckInIds;
   Object? _syncException;
+  Object? _checkInSyncException;
   final MediaUploader? _mediaUploader;
 
   int syncCallCount = 0;
+  int checkInSyncCallCount = 0;
   int uploadCallCount = 0;
   List<String> lastSyncIds = const [];
+  List<String> lastCheckInSyncIds = const [];
 
   set confirmedIds(List<String> value) => _confirmedIds = List<String>.from(value);
 
+  set confirmedCheckInIds(List<String> value) =>
+      _confirmedCheckInIds = List<String>.from(value);
+
   set syncException(Object? value) => _syncException = value;
+
+  set checkInSyncException(Object? value) => _checkInSyncException = value;
 
   @override
   Future<void> uploadOccurrenceMedia({required String occurrenceId}) async {
@@ -40,5 +53,10 @@ class FakeSyncGateway implements SyncGateway {
   }
 
   @override
-  Future<List<String>> syncCheckIns({required List<String> checkInIds}) async => [];
+  Future<List<String>> syncCheckIns({required List<String> checkInIds}) async {
+    checkInSyncCallCount++;
+    lastCheckInSyncIds = List<String>.from(checkInIds);
+    if (_checkInSyncException != null) throw _checkInSyncException!;
+    return _confirmedCheckInIds.where(checkInIds.contains).toList();
+  }
 }

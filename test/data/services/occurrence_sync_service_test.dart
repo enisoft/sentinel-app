@@ -138,6 +138,31 @@ void main() {
     );
   });
 
+  test('media upload exception records media_uploading phase and retries on next cycle',
+      () async {
+    await seedOccurrence(id: 'occ-upload-fail', withMedia: true);
+    fakeMediaUploader.uploadException =
+        MediaUploadException(500, 'Rede indisponível.');
+
+    await service.processPending();
+
+    var occurrence = await occurrenceRepo.getById('occ-upload-fail');
+    expect(occurrence!.syncState, SyncState.failed);
+    expect(occurrence.failedPhase, SyncPhase.mediaUploading);
+    expect(occurrence.retryCount, 1);
+    expect(fakeGateway.syncCallCount, 0);
+    expect(fakeMediaUploader.uploadCallCount, 1);
+
+    fakeMediaUploader.uploadException = null;
+    fakeGateway.confirmedIds = ['occ-upload-fail'];
+
+    final result = await service.processPending();
+
+    expect(result.synced, 1);
+    occurrence = await occurrenceRepo.getById('occ-upload-fail');
+    expect(occurrence!.syncState, SyncState.synced);
+  });
+
   test('media upload failure records media_uploading phase and retries partial',
       () async {
     const occId = 'occ-partial-fail';
