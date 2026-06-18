@@ -1,7 +1,14 @@
 # Sentinel App — Arquitetura e estado atual (pós-E10)
 
-Documento derivado do **código em `lib/` e testes em `test/`**. Em caso de divergência
-com outros docs, **o código vence**.
+Documento **nativo do sentinel-app**, derivado do código em `lib/` e testes em `test/`.
+
+**Fonte de verdade deste doc:** implementação Flutter. Em divergência com este arquivo,
+**o código vence**.
+
+**Contrato de API e estado do backend** vivem em cópias do `sentinel-backend` (coladas
+manualmente, não editar aqui): [`sentinel-api-app.md`](sentinel-api-app.md) e
+[`STATUS_PROJETO.md`](STATUS_PROJETO.md). Em divergência de contrato HTTP, **o backend
+vence** — ver [`REFERENCES.md`](REFERENCES.md).
 
 Última revisão: 2026-06-18.
 
@@ -195,9 +202,9 @@ Suíte cobre: secure storage/migração, `ApiClient` (rede vs 401), bootstrap of
 `OccurrenceSyncService`, `SyncGatewayHttp`, TUS path canônico, fluxo de captura,
 `FakeDeviceCameraSource`.
 
-Contrato de API consumido: [`docs/sentinel-api-app.md`](sentinel-api-app.md).
+Contrato de API (cópia do backend): [`sentinel-api-app.md`](sentinel-api-app.md).
 
-Referências do ecossistema: [`docs/REFERENCES.md`](REFERENCES.md).
+Mapa de documentação: [`REFERENCES.md`](REFERENCES.md).
 
 ---
 

@@ -1,32 +1,71 @@
 # Referências do ecossistema Sentinel
 
-Documentos de **fonte da verdade** para o `sentinel-app`. Não duplicar o conteúdo
-deles neste repositório — consultar os originais ou a cópia manual quando existir.
+Mapa da documentação do `sentinel-app`: o que é nativo deste repo, o que é cópia
+do backend, e qual fonte prevalece em caso de divergência.
 
-Em caso de **divergência**, o repositório **sentinel-backend** é a autoridade.
+---
 
-## Documentos no sentinel-backend
+## Hierarquia de fontes
 
-| Documento | Caminho (relativo a este repo) | Conteúdo |
-|-----------|----------------------------------|----------|
-| `sentinel-scope.md` | [`../sentinel-backend/sentinel-scope.md`](../sentinel-backend/sentinel-scope.md) | Arquitetura, UX capture-first, fila offline, máquina de estados, TUS |
-| `sentinel-decisoes.md` | [`../sentinel-backend/.cursor/rules/sentinel-decisoes.md`](../sentinel-backend/.cursor/rules/sentinel-decisoes.md) | Histórico de decisões (consultar sob demanda) |
-| `sentinel-api-app.md` | **Referência externa — ainda não copiada para este repo** | Superfície de API que o app consome, em ordem de build |
+| Pergunta | Fonte de verdade |
+|----------|------------------|
+| O que o **app Flutter implementa hoje**? | Código em `lib/` + `test/` → [`ARQUITETURA.md`](ARQUITETURA.md) |
+| **Contrato de API** (rotas, payloads, ordem de build)? | `sentinel-backend` → cópias locais abaixo |
+| **Estado do backend** (rotas, testes PHPUnit, detalhes de sync)? | `sentinel-backend` → [`STATUS_PROJETO.md`](STATUS_PROJETO.md) |
+| **Visão de produto** (o que o sistema é/será)? | `sentinel-backend` → [`sentinel-scope.md`](sentinel-scope.md) |
+| **Por quê** (decisões históricas)? | `sentinel-backend` → [`sentinel-decisoes.md`](sentinel-decisoes.md) |
 
-### `sentinel-api-app.md` — status
+### Regra de conflito
 
-Este arquivo **ainda não existe** no `sentinel-backend` (apenas referenciado no escopo).
-**Não inventar** campos, rotas ou formatos com base em suposições.
+- **Implementação do app:** se `ARQUITETURA.md` divergir do código, **o código vence**.
+- **Contrato API / backend:** se qualquer doc local divergir do `sentinel-backend`, **o backend vence** — atualize a cópia manual, não invente no app repo.
+- **App vs contrato:** se o código consumir algo diferente do contrato em `sentinel-api-app.md`, trate como bug de implementação ou contrato desatualizado no backend (corrigir no repo certo).
 
-Quando o documento estiver disponível, **colar manualmente** em `docs/` deste
-repositório (`sentinel-app/docs/sentinel-api-app.md`).
+---
 
-Até lá, o contrato implementado no backend para sync de ocorrências está em
-[`../sentinel-backend/STATUS_PROJETO.md`](../sentinel-backend/STATUS_PROJETO.md)
-(seção `POST /api/v1/occurrences/sync`).
+## Documentos nativos do sentinel-app
+
+Editar **neste repositório**:
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| [`README.md`](../README.md) | Onboarding: `.env`, comandos, resumo E10 |
+| [`ARQUITETURA.md`](ARQUITETURA.md) | Arquitetura e estado pós-E10 derivados de `lib/` + `test/` |
+
+---
+
+## Cópias manuais do sentinel-backend
+
+Os arquivos abaixo são **colados manualmente** do `sentinel-backend`. **Não editar**
+no `sentinel-app` — alterações devem ser feitas no backend e a cópia re-sincronizada.
+
+| Cópia local | Origem no backend |
+|-------------|-------------------|
+| [`sentinel-api-app.md`](sentinel-api-app.md) | `sentinel-backend/docs/sentinel-api-app.md` |
+| [`STATUS_PROJETO.md`](STATUS_PROJETO.md) | `sentinel-backend/docs/STATUS_PROJETO.md` |
+
+### Como atualizar
+
+1. Editar o documento no `sentinel-backend`.
+2. Copiar o conteúdo integral para o caminho correspondente em `sentinel-app/docs/`.
+3. Commitar nos dois repos (ou só no app, se a mudança foi só no backend e a cópia acompanha).
+
+---
+
+## Documentos de produto (consulta)
+
+Também existem localmente; em divergência, o `sentinel-backend` é autoridade:
+
+| Cópia local | Origem no backend |
+|-------------|-------------------|
+| [`sentinel-scope.md`](sentinel-scope.md) | `sentinel-backend/sentinel-scope.md` |
+| [`sentinel-decisoes.md`](sentinel-decisoes.md) | `sentinel-backend/.cursor/rules/sentinel-decisoes.md` |
+
+---
 
 ## Uso no desenvolvimento
 
-1. Antes de implementar integração de rede, ler o contrato em `sentinel-api-app.md`
-   (quando copiado) ou `STATUS_PROJETO.md` (interim).
-2. Regras do agente: [`.cursor/rules/sentinel-app.md`](../.cursor/rules/sentinel-app.md).
+1. **Nova integração de rede no app** → ler `sentinel-api-app.md` (cópia do backend).
+2. **Payload ou comportamento HTTP em dúvida** → `STATUS_PROJETO.md` + código em `sentinel-backend`.
+3. **O que já está no Flutter** → `ARQUITETURA.md` + código.
+4. **Regras do agente** → [`.cursor/rules/sentinel-app.md`](../.cursor/rules/sentinel-app.md).

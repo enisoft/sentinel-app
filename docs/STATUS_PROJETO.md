@@ -1,6 +1,29 @@
 # Status do Projeto — Sentinel Backend
 
-Última atualização: 2026-06-17
+Última atualização: 2026-06-18
+
+## Estado atual (pós-E10)
+
+Épico E10 concluído no **sentinel-app**: login Supabase, `GET /me`, catálogo delta e `POST /occurrences/sync` em uso real (device + LAN). O backend expõe seis rotas autenticadas em `routes/api.php` — todas cobertas por `tests/Feature/Api/V1/`. `POST /check-ins/sync` está pronto e testado, mas o app ainda não consome.
+
+**Rotas app-facing (fonte: `routes/api.php`):**
+
+| Método | Rota | Testes | App consome |
+|--------|------|--------|-------------|
+| `GET` | `/api/v1/me` | `MeTest` | Sim |
+| `GET` | `/api/v1/catalog/observables` | `CatalogSyncTest` | Sim |
+| `GET` | `/api/v1/catalog/categories` | `CatalogSyncTest` | Sim |
+| `GET` | `/api/v1/catalog/municipalities` | `CatalogSyncTest` | Sim |
+| `POST` | `/api/v1/occurrences/sync` | `OccurrenceSyncTest` | Sim |
+| `POST` | `/api/v1/check-ins/sync` | `CheckInSyncTest` | Não (ainda) |
+
+**Suíte:** `php artisan test` → **47 testes** verdes (164 assertions).
+
+**Auth JWT dual (dívida ENI-34 resolvida):** verificação via `SUPABASE_JWT_ALGO` (`config/services.php` → `services.supabase.jwt_algo`). HS256 usa `SUPABASE_JWT_SECRET`; ES256 usa JWKS em `{SUPABASE_URL}/auth/v1/.well-known/jwks.json`. O `alg` do header do token **deve coincidir** com o algoritmo configurado — divergência rejeita com 401, sem fallback entre ramos (blindagem contra algorithm confusion). Testes: `SupabaseJwtVerifierTest` (unit) + `MeTest::test_me_with_swapped_alg_token_returns_401` (HTTP).
+
+**Atenção operacional (GoTrue local recente):** tokens de sessão do operador saem com `alg: ES256`. Se `.env` não definir `SUPABASE_JWT_ALGO=ES256`, o default `HS256` causa 401 em todas as rotas autenticadas. PHPUnit fixa `SUPABASE_JWT_ALGO=HS256` em `phpunit.xml` (tokens de teste HS256).
+
+---
 
 ## Visão geral
 
@@ -13,7 +36,7 @@
 | Testes da API app-facing | Pronto (`tests/Feature/Api/V1/`) |
 | Models Eloquent | Parcial (`Occurrence`, `OccurrenceMedia`, `Observable`, `Category`, `CheckIn`, `Task`, `Municipality`, `User`, `Role`) |
 | API painel / tasks / push | Pendente |
-| Autenticação Supabase Auth (JWT HS256) | Pronto (middleware `auth.supabase`) |
+| Autenticação Supabase Auth (JWT dual HS256/ES256) | Pronto (middleware `auth.supabase` + `SupabaseJwtVerifier`) |
 | Provisionamento de operadores | Pronto (`sentinel:create-operator` + Admin API GoTrue) |
 | Seeders (catálogo + roles) | Pronto (`DatabaseSeeder` idempotente: roles, municípios, categorias, observables) |
 | Storage privado + RLS (Supabase) | Pronto (`20260615120000_*` + `20260616120000_sentinel_media_select_owner_only.sql`) |
@@ -32,8 +55,10 @@
 6. `test_sync_without_authorization_returns_401` — sem header `Authorization`.
 7. `test_sync_with_invalid_signature_returns_401` — assinatura HS256 inválida.
 8. `test_sync_with_expired_token_returns_401` — token com `exp` no passado.
-9. `test_sync_with_unknown_sub_returns_401` — `sub` sem linha correspondente em `public.users`.
-10. `test_sync_ignores_reported_by_in_body` — `reported_by` enviado no body é ignorado; vence o id do token.
+9. `test_sync_with_invalid_aud_returns_401` — `aud` diferente de `authenticated`.
+10. `test_sync_with_missing_exp_claim_returns_401` — token sem claim `exp`.
+11. `test_sync_with_unknown_sub_returns_401` — `sub` sem linha correspondente em `public.users`.
+12. `test_sync_ignores_reported_by_in_body` — `reported_by` enviado no body é ignorado; vence o id do token.
 
 **Testes de provisionamento — cenários cobertos** (`tests/Feature/OperatorProvisioningTest.php`):
 
@@ -45,8 +70,9 @@
 
 **Testes de `/me` — cenários cobertos** (`tests/Feature/Api/V1/MeTest.php`):
 
-1. `test_me_with_valid_token_returns_operator_profile` — retorna `id`, `name`, `role` (slug), `municipality_id`, `photo_path`; sem `email`/`password`.
-2. `test_me_without_token_returns_401` — sem header `Authorization`.
+1. `test_me_with_valid_token_returns_operator_profile` — retorna `id`, `name`, `role` (slug), `municipality_id`, `photo_path`; sem `email`/`password`/`is_active`/`role_id`.
+2. `test_me_without_token_returns_401` — sem header `Authorization` → `Token de autenticação ausente.`
+3. `test_me_with_swapped_alg_token_returns_401` — header `alg` trocado (ES256 em token HS256) → `Token de autenticação inválido.`
 
 **Testes de catálogo — cenários cobertos** (`tests/Feature/Api/V1/CatalogSyncTest.php`):
 
@@ -132,6 +158,23 @@ Operadores **não** se cadastram (sem self-signup). Admin provisiona credencial 
 
 **`public.users.id` = `auth.users.id`** (mesmo UUID). O middleware `auth.supabase` resolve o operador pelo claim `sub` do JWT.
 
+### JWT dual (`SUPABASE_JWT_ALGO`)
+
+| Variável | Onde | Valor |
+|----------|------|-------|
+| `SUPABASE_JWT_ALGO` | `.env` | `HS256` (default) ou `ES256` |
+| `SUPABASE_JWT_SECRET` | `.env` | Obrigatório quando `jwt_algo=HS256` |
+| `SUPABASE_URL` | `.env` | Base do projeto; JWKS em `/auth/v1/.well-known/jwks.json` quando `jwt_algo=ES256` |
+
+Fluxo (`SupabaseJwtVerifier::decode`):
+
+1. Lê `alg` do header do token e compara com `SUPABASE_JWT_ALGO` — **divergência → 401**, sem tentar o outro algoritmo.
+2. **HS256:** valida com `Key(secret, 'HS256')`; allowlist explícita `['HS256']`.
+3. **ES256:** busca JWKS (cache 1 h), filtra chaves ES256, `JWT::decode` com allowlist `['ES256']`.
+4. Middleware exige adicionalmente: `exp` numérico, `aud === 'authenticated'`, `sub` presente, linha em `public.users`.
+
+Rejeita `none`, RS256 e qualquer `alg` fora do configurado (algorithm confusion). Testes unitários: `tests/Unit/SupabaseJwtVerifierTest.php` (7 cenários).
+
 ### Comando
 
 ```bash
@@ -177,7 +220,7 @@ Configurada em `config/services.php` → `services.supabase.service_role_key`.
 
 Sincroniza ocorrências criadas offline no **sentinel-app**. UUIDs gerados no cliente; upsert por `id`.
 
-**Autenticação:** Supabase Auth — header `Authorization: Bearer <JWT>` (HS256). O middleware `auth.supabase` valida assinatura, `exp`, `aud == authenticated` e resolve `public.users` pelo claim `sub`. Identidade sem perfil em `public.users` retorna 401.
+**Autenticação:** Supabase Auth — header `Authorization: Bearer <JWT>`. Algoritmo definido por `SUPABASE_JWT_ALGO` (HS256 ou ES256); `alg` do token deve coincidir (sem fallback). O middleware `auth.supabase` valida assinatura, `exp`, `aud == authenticated` e resolve `public.users` pelo claim `sub`. Identidade sem perfil em `public.users` retorna 401.
 
 #### Request
 
@@ -260,7 +303,7 @@ Sincroniza ocorrências criadas offline no **sentinel-app**. UUIDs gerados no cl
 |-------|------|-------------|------------|
 | `id` | UUID | Sim | Gerado no App |
 | `media_type` | string | Sim | `image`, `audio` ou `video` |
-| `path` | string | Sim | Caminho relativo no bucket `sentinel-media`: `occurrences/{occurrence_id}/{media_id}.{ext}` |
+| `path` | string | Sim | String até 2048 caracteres; backend **não valida** formato (testes aceitam URL completa ou caminho relativo). Convenção recomendada no Storage: `occurrences/{occurrence_id}/{media_id}.{ext}` |
 | `mime_type` | string | Sim | Deve começar com `{media_type}/` |
 | `original_name` | string | Não | Nome do arquivo no dispositivo |
 | `size_bytes` | integer | Não | Tamanho em bytes |
@@ -318,7 +361,7 @@ Token inválido, expirado ou usuário sem perfil:
 
 #### Response `422 Unprocessable Entity`
 
-Erros de validação do payload (campos obrigatórios, UUIDs inválidos, FKs inexistentes, etc.).
+Erros de validação do payload (`SyncOccurrencesRequest`: campos obrigatórios, UUIDs inválidos, FKs inexistentes, `mime_type` incompatível com `media_type`, etc.). **Não coberto por teste Feature** — regra existe no FormRequest, mas a suíte não asserta 422.
 
 #### Exemplo cURL
 
@@ -512,7 +555,11 @@ Sincroniza check-ins de presença criados offline no **sentinel-app**. UUIDs ger
 
 #### Response `401 Unauthorized` / `422 Unprocessable Entity`
 
-Mesmo padrão do sync de ocorrências.
+**401 (testado):** sem token → `Token de autenticação ausente.`
+
+**401 (não testado neste endpoint):** assinatura inválida, token expirado, `aud` inválido, `sub` desconhecido — mesmo middleware das ocorrências, mas `CheckInSyncTest` cobre apenas ausência de token.
+
+**422:** regras em `SyncCheckInsRequest` (mesmo padrão de validação). **Não coberto por teste Feature.**
 
 #### Exemplo cURL
 
@@ -541,9 +588,10 @@ Ambiente local: **Postgres do Supabase CLI** em `127.0.0.1:54322`, database `pos
 | `DB_SCHEMA` | `public` | `testing` |
 | `SUPABASE_URL` | `http://127.0.0.1:54321` | `http://127.0.0.1:54321` |
 | `SUPABASE_JWT_SECRET` | valor de `npx supabase status -o env` | segredo fixo em `phpunit.xml` |
+| `SUPABASE_JWT_ALGO` | `ES256` para GoTrue local recente; `HS256` legado | `HS256` fixo em `phpunit.xml` |
 | `SUPABASE_SERVICE_ROLE_KEY` | valor de `npx supabase status -o env` | não usada nos testes (GoTrue mockado) |
 
-O `.env.example` foi corrigido para refletir o setup Supabase local (`DB_PORT=54322`, `postgres`/`postgres`, schema `public`) e inclui `SUPABASE_URL`, `SUPABASE_JWT_SECRET` e `SUPABASE_SERVICE_ROLE_KEY`. Os testes usam o schema `testing` no **mesmo** Postgres — isolados por `search_path` (`config/database.php` → `DB_SCHEMA`). Credenciais de teste de JWT estão versionadas em `phpunit.xml` (não dependem do `.env`).
+O `.env.example` reflete o setup Supabase local (`DB_PORT=54322`, `postgres`/`postgres`, schema `public`) e inclui `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_JWT_ALGO` e `SUPABASE_SERVICE_ROLE_KEY`. Os testes usam o schema `testing` no **mesmo** Postgres — isolados por `search_path` (`config/database.php` → `DB_SCHEMA`). Credenciais de teste de JWT estão versionadas em `phpunit.xml` (não dependem do `.env`).
 
 O schema `testing` é criado automaticamente antes da suíte via [`tests/bootstrap.php`](tests/bootstrap.php) (`CREATE SCHEMA IF NOT EXISTS testing`). `RefreshDatabase` roda migrations apenas no schema `testing`; dados do `public` não são alterados.
 

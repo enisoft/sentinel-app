@@ -3,9 +3,17 @@
 App móvel **offline-first** do ecossistema Sentinel (Flutter/Android). Tudo é salvo
 localmente primeiro e sincronizado depois.
 
-**Arquitetura detalhada (estado pós-E10):** [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md)
+## Documentação
 
-Documentação de referência: [`docs/REFERENCES.md`](docs/REFERENCES.md).
+| Documento | Papel |
+|-----------|-------|
+| [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) | **App** — o que o Flutter implementa (fonte: `lib/` + `test/`) |
+| [`docs/sentinel-api-app.md`](docs/sentinel-api-app.md) | **API** — contrato e ordem de build (cópia do backend) |
+| [`docs/STATUS_PROJETO.md`](docs/STATUS_PROJETO.md) | **Backend** — rotas, testes, payloads (cópia do backend) |
+| [`docs/REFERENCES.md`](docs/REFERENCES.md) | Mapa de docs e regras de divergência |
+
+`sentinel-api-app.md` e `STATUS_PROJETO.md` são **colados manualmente** do
+`sentinel-backend` — não editar aqui; ver [`docs/REFERENCES.md`](docs/REFERENCES.md).
 
 ## Estado atual (E10)
 
