@@ -24,6 +24,16 @@ class _LoginScreenState extends State<LoginScreen> {
   AuthGateway get _auth => widget.authGateway ?? getIt<AuthGateway>();
 
   @override
+  void initState() {
+    super.initState();
+    final notice = _auth.loginNotice;
+    if (notice != null) {
+      _error = notice;
+      _auth.clearLoginNotice();
+    }
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();

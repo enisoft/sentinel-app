@@ -11,6 +11,7 @@ class FakeAuthGateway implements AuthGateway {
 
   bool _signedIn;
   final String token;
+  String? _loginNotice;
 
   final _controller = StreamController<bool>.broadcast();
 
@@ -24,13 +25,22 @@ class FakeAuthGateway implements AuthGateway {
   String? get accessToken => _signedIn ? token : null;
 
   @override
+  String? get loginNotice => _loginNotice;
+
+  @override
+  void clearLoginNotice() => _loginNotice = null;
+
+  @override
   Future<void> signIn({required String email, required String password}) async {
     _signedIn = true;
     _controller.add(true);
   }
 
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({String? loginNotice}) async {
+    if (loginNotice != null) {
+      _loginNotice = loginNotice;
+    }
     _signedIn = false;
     _controller.add(false);
   }

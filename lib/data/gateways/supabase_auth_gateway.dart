@@ -6,6 +6,7 @@ class SupabaseAuthGateway implements AuthGateway {
   SupabaseAuthGateway(this._client);
 
   final SupabaseClient _client;
+  String? _loginNotice;
 
   @override
   Stream<bool> get sessionStream =>
@@ -18,6 +19,12 @@ class SupabaseAuthGateway implements AuthGateway {
   String? get accessToken => _client.auth.currentSession?.accessToken;
 
   @override
+  String? get loginNotice => _loginNotice;
+
+  @override
+  void clearLoginNotice() => _loginNotice = null;
+
+  @override
   Future<void> signIn({
     required String email,
     required String password,
@@ -26,7 +33,10 @@ class SupabaseAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<void> signOut() async {
+  Future<void> signOut({String? loginNotice}) async {
+    if (loginNotice != null) {
+      _loginNotice = loginNotice;
+    }
     await _client.auth.signOut();
   }
 }
