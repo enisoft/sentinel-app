@@ -39,6 +39,10 @@ class TusMediaUploader implements MediaUploader {
     }
 
     final media = await _occurrences.getMedia(occurrenceId);
+    if (media.any((item) => item.remotePath == null)) {
+      await _applyDebugUploadDelayIfConfigured();
+    }
+
     for (final item in media) {
       if (item.remotePath != null) continue;
 
@@ -106,6 +110,13 @@ class TusMediaUploader implements MediaUploader {
       throw MediaUploadException(null, e.message);
     } on HttpException catch (e) {
       throw MediaUploadException(null, e.message);
+    }
+  }
+
+  Future<void> _applyDebugUploadDelayIfConfigured() async {
+    final seconds = _config.syncDebugUploadDelaySeconds;
+    if (seconds > 0) {
+      await Future<void>.delayed(Duration(seconds: seconds));
     }
   }
 

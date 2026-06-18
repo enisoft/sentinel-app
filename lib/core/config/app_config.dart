@@ -6,11 +6,15 @@ class AppConfig {
     required this.supabaseUrl,
     required this.supabaseAnonKey,
     required this.apiBaseUrl,
+    this.syncDebugUploadDelaySeconds = 0,
   });
 
   final String supabaseUrl;
   final String supabaseAnonKey;
   final String apiBaseUrl;
+
+  /// Atraso artificial antes do upload TUS (só dev). 0 = desligado.
+  final int syncDebugUploadDelaySeconds;
 
   static Future<AppConfig> load() async {
     try {
@@ -27,6 +31,7 @@ class AppConfig {
       supabaseUrl: supabaseUrl,
       supabaseAnonKey: supabaseAnonKey,
       apiBaseUrl: apiBaseUrl,
+      syncDebugUploadDelaySeconds: _optionalInt('SYNC_DEBUG_UPLOAD_DELAY_SECONDS'),
     );
   }
 
@@ -36,7 +41,18 @@ class AppConfig {
       supabaseAnonKey: _requireFromMap(values, 'SUPABASE_ANON_KEY'),
       apiBaseUrl:
           _requireFromMap(values, 'API_BASE_URL').replaceAll(RegExp(r'/+$'), ''),
+      syncDebugUploadDelaySeconds:
+          _optionalIntFromMap(values, 'SYNC_DEBUG_UPLOAD_DELAY_SECONDS'),
     );
+  }
+
+  static int _optionalInt(String key) =>
+      _optionalIntFromMap(dotenv.env, key);
+
+  static int _optionalIntFromMap(Map<String, String?> values, String key) {
+    final raw = values[key]?.trim();
+    if (raw == null || raw.isEmpty) return 0;
+    return int.tryParse(raw) ?? 0;
   }
 
   static String _require(String key) {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 
 import '../../core/capture/occurrence_lifecycle_status.dart';
+import '../../core/sync/sync_failure_reason.dart';
 import '../../core/sync/sync_state.dart';
 import '../local/app_database.dart';
 
@@ -58,14 +59,17 @@ class SyncQueueRepository {
     return PendingSyncSnapshot(occurrences: occurrences, checkIns: checkIns);
   }
 
-  Future<List<Occurrence>> getPendingOccurrences() {
-    return (_db.select(_db.occurrences)
+  /// Confirmadas (`pending`) ainda não sincronizadas, exceto falhas 422 permanentes.
+  Future<List<Occurrence>> getPendingOccurrences() async {
+    final rows = await (_db.select(_db.occurrences)
           ..where((t) => t.syncState.isNotValue(SyncState.synced.storageValue))
           ..where(
             (t) => t.status.equals(OccurrenceLifecycleStatus.pending),
           )
           ..orderBy([(t) => OrderingTerm.asc(t.createdLocalAt)]))
         .get();
+
+    return rows.where(isOccurrenceEligibleForSyncQueue).toList();
   }
 
   Future<List<CheckIn>> getPendingCheckIns() {
@@ -74,4 +78,15 @@ class SyncQueueRepository {
           ..orderBy([(t) => OrderingTerm.asc(t.createdLocalAt)]))
         .get();
   }
+}
+
+/// Rascunhos e falhas `validation:` ficam no Drift mas fora da fila visível/sync.
+bool isOccurrenceEligibleForSyncQueue(Occurrence occurrence) {
+  if (occurrence.status != OccurrenceLifecycleStatus.pending) return false;
+  if (occurrence.syncState == SyncState.synced) return false;
+  if (occurrence.syncState == SyncState.failed &&
+      SyncFailureReason.isNonRetryableValidation(occurrence.failedReason)) {
+    return false;
+  }
+  return true;
 }

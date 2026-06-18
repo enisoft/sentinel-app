@@ -271,7 +271,7 @@ void main() {
     expect(occurrence.retryCount, 1);
   });
 
-  test('422 failure is skipped on next processPending cycle', () async {
+  test('422 failure is excluded from pending queue on next cycle', () async {
     await seedOccurrence(id: 'occ-skip');
     fakeGateway.syncException = ApiException(422, 'FK inválida.');
 
@@ -280,9 +280,12 @@ void main() {
     fakeGateway.confirmedIds = ['occ-skip'];
     fakeGateway.syncCallCount = 0;
 
+    final pending = await queueRepo.getPendingOccurrences();
+    expect(pending.map((o) => o.id), isEmpty);
+
     final result = await service.processPending();
 
-    expect(result.skipped, 1);
+    expect(result.skipped, 0);
     expect(result.synced, 0);
     expect(fakeGateway.syncCallCount, 0);
     final occurrence = await occurrenceRepo.getById('occ-skip');

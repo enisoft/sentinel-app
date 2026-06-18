@@ -1,96 +1,90 @@
-# Última tarefa executada — ENI-41 / E10.3a: worker de sync sob demanda + estado observável
+# Última tarefa executada — ENI-42 / E10.3b: Foreground Service para sync em background
 
-**Status: DONE** (Linear ENI-41 fechado em 2026-06-18)
+**Status: implementado** — verificação manual G56/G65 pendente
 
-Pedido: coordenador de sync chamável sob demanda sobre `OccurrenceSyncService.processPending`, estado observável (idle/syncing/lastResult/pendentes), guard de reentrância, botão na home, DI + testes. Sem FGS/nativo (ENI-42).
+Pedido: sync com app minimizado / tela apagada via Foreground Service Android (`dataSync`), notificação persistente *"Sincronizando ocorrências…"*, worker ENI-41 em Dart. Sem UIDT (ENI-40), sem `connectivity_plus` (ENI-39).
+
+Data: 2026-06-18
 
 ---
 
 ## Implementação
 
-### 1. `OccurrenceSyncCoordinator` + estado
+### Modelo
 
-| Componente | Descrição |
-|------------|-----------|
-| `OccurrenceSyncCoordinatorState` | `status` (idle/syncing), `lastResult` (sucesso/erro + timestamp), `pendingCount` |
-| `DefaultOccurrenceSyncCoordinator` | Orquestra `processPending()`; escuta `watchPending()` para contagem |
-| Guard de reentrância | `_running` — chamada concorrente retorna `null` sem iniciar segundo ciclo |
-| `FakeOccurrenceSyncCoordinator` | Fake controlável para testes (barreira, contador de chamadas) |
+O sync **permanece 100% em Dart** (`OccurrenceSyncCoordinator` + `OccurrenceSyncService`). O FGS nativo só:
 
-### 2. DI
+1. Eleva prioridade do processo (`startForeground`)
+2. Exibe notificação ongoing
+3. Inicia **antes** de `syncNow()` e para quando `getPending().totalCount == 0`
 
-- Produção: `DefaultOccurrenceSyncCoordinator` registrado como `OccurrenceSyncCoordinator` (lazy singleton).
-- Testing: `configureDependenciesForTesting(..., occurrenceSyncCoordinator: fake)` aceita override.
+Disparo **somente** nos 3 pontos existentes (sem watcher automático na fila).
 
-### 3. Pontos de disparo migrados
+### Dart
 
-| Local | Antes | Depois |
-|-------|-------|--------|
-| `AppBootstrapScreen` | `OccurrenceSyncService.processPending()` | `OccurrenceSyncCoordinator.syncNow()` |
-| `OccurrenceDraftFormScreen` | fire-and-forget `processPending()` | fire-and-forget `syncNow()` |
-| `CaptureHomeScreen` | — | botão **Sincronizar agora** + `ValueListenableBuilder` |
+| Componente | Função |
+|------------|--------|
+| `SyncForegroundPlatform` | MethodChannel `com.sentinel.sentinel_app/sync_foreground` |
+| `OccurrenceSyncForegroundRunner` | `runIfPending()` — FGS + coordinator |
+| `FakeSyncForegroundPlatform` | testes |
 
-### 4. UI mínima (`CaptureHomeScreen`)
+### Android (Kotlin)
 
-- Botão `sync_now_button`: dispara `syncNow()`, desabilitado enquanto sincroniza.
-- Texto `N pendente(s)` quando `pendingCount > 0`.
-- Mensagem de última falha em vermelho quando `lastResult.success == false`.
+| Arquivo | Função |
+|---------|--------|
+| `SyncForegroundService.kt` | FGS `dataSync`, notificação canal `sentinel_sync` |
+| `MainActivity.kt` | MethodChannel start/stop + `POST_NOTIFICATIONS` |
+| `AndroidManifest.xml` | permissões + declaração do service |
+| `res/values/strings.xml` | textos da notificação |
 
-### 5. Correção pós-debug manual — rascunhos fora do sync
+### Pontos de disparo
 
-Decisão: só ocorrências **confirmadas** (`status = pending`) entram na fila; rascunhos ficam locais.
+- `AppBootstrapScreen` → `runner.runIfPending()`
+- `OccurrenceDraftFormScreen` → `unawaited(runner.runIfPending())`
+- `CaptureHomeScreen` → botão sync via `runner.runIfPending()`
 
-- `SyncQueueRepository.getPendingOccurrences()` filtra `status = pending`.
-- Evita rascunhos abandonados irem ao sync, falharem com 422 (`validation:`) e ficarem presos no contador.
+### Limite MVP (aceito)
+
+FGS `dataSync` tem teto **~6h/dia** no Android 15 — UIDT em ENI-40 pós-MVP.
 
 ---
 
 ## Testes automatizados
 
-**`flutter test` → 75 passed**
+**`flutter test` → 78 passed** (+3 novos no foreground runner)
 
 | Teste | Verifica |
 |-------|----------|
-| `occurrence_sync_coordinator_test` (5) | disparo, reentrância, falha, pendentes, fila vazia |
-| `getPending excludes unconfirmed drafts` | rascunho não conta na fila |
-| `processPending ignores unconfirmed drafts` | sync não toca `status = draft` |
-| `draft capture is not in sync pending queue until confirmed` | captura sem confirmar → fila 0 |
-| Demais suítes | bootstrap, capture flow, occurrence sync — verdes |
+| start antes de sync, stop quando fila vazia | FGS lifecycle |
+| skip quando fila vazia | sem start desnecessário |
+| não stop se ainda há pendentes | fila parcial |
+
+Cobertura instrumentada Android: fora de escopo — verificação manual no device.
 
 ---
 
-## Verificação manual — device G56
+## Verificação manual — device G56/G65 (pendente)
 
 | # | Passo | Evidência | Status |
 |---|-------|-----------|--------|
-| 1 | Capturar OFFLINE → confirmar | Botão mostra pendente(s) | ✅ |
-| 2 | Religar rede → **Sincronizar agora** | sincronizando → ocioso | ✅ |
-| 3 | Postgres + Storage | ocorrência + objeto no bucket | ✅ |
-| 4 | Botão com fila vazia | não quebra; ocioso | ✅ |
-| 5 | Reinstalação limpa + fluxo completo | fila 0 após sync | ✅ |
-| 6 | Rascunho sem confirmar | não incrementa pendentes (pós-fix) | ✅ |
-
-**Nota debug:** itens presos na fila eram rascunhos `draft` com `validation:` — corrigido pelo filtro `status = pending`.
-
-### Comandos úteis (host)
+| 1 | Logar online; capturar e **confirmar** | 1 pendente | ⬜ |
+| 2 | Minimizar / apagar tela durante sync | Notificação *"Sincronizando ocorrências…"* | ⬜ |
+| 3 | Aguardar conclusão | Notificação some; fila 0 | ⬜ |
+| 4 | Postgres + Storage | `SELECT id, synced_at ...` + objeto no bucket | ⬜ |
+| 5 | Android 13+: aceitar permissão de notificação | prompt na 1ª execução | ⬜ |
 
 ```powershell
-# Copiar Drift do device (pacote + caminho corretos)
-adb -s ZF525FJSZ2 exec-out run-as com.sentinel.sentinel_app cat app_flutter/sentinel.db > sentinel.db
-
-sqlite3 sentinel.db "SELECT status, sync_state, COUNT(*) FROM occurrences GROUP BY status, sync_state;"
-
-# Postgres pós-sync
-psql -h localhost -p 54322 -U postgres -d postgres -c "SELECT id, reported_by, synced_at FROM occurrences ORDER BY created_at DESC LIMIT 3;"
+adb -s <device> exec-out run-as com.sentinel.sentinel_app cat app_flutter/sentinel.db > sentinel.db
+sqlite3 sentinel.db "SELECT sync_state, COUNT(*) FROM occurrences WHERE status='pending' GROUP BY sync_state;"
 ```
 
 ---
 
 ## AUDITORIA
 
-**Escopo:** orquestração Dart sobre fluxo já auditado (E10.1/10.2). Filtro de rascunhos é regra de fila local, sem mudança de contrato HTTP.
+Orquestração nativa sobre worker já auditado (ENI-41/E10.1-10.2). Sem mudança de contrato HTTP/auth.
 
-**Veredito:** não escalar para audit — report + testes verdes + verificação device OK.
+**Veredito:** não escalar — testes Dart + verificação manual device.
 
 ---
 
@@ -98,20 +92,16 @@ psql -h localhost -p 54322 -U postgres -d postgres -c "SELECT id, reported_by, s
 
 | Arquivo | Mudança |
 |---------|---------|
-| `lib/core/sync/occurrence_sync_coordinator_state.dart` | **novo** — modelos de estado |
-| `lib/core/capture/occurrence_lifecycle_status.dart` | **novo** — `draft` / `pending` |
-| `lib/data/services/occurrence_sync_coordinator.dart` | **novo** — interface + implementação |
-| `lib/data/fakes/fake_occurrence_sync_coordinator.dart` | **novo** — fake controlável |
-| `lib/data/fakes/fake_sync_gateway.dart` | `onBeforeSync` para testes de reentrância |
-| `lib/data/repositories/sync_queue_repository.dart` | fila só `status = pending` |
-| `lib/data/services/capture_occurrence_service.dart` | constantes de lifecycle |
-| `lib/app/di.dart` | registro do coordinator |
-| `lib/presentation/capture/capture_home_screen.dart` | botão sync + estado observável |
-| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | usa coordinator |
-| `lib/presentation/capture/occurrence_draft_form_screen.dart` | usa coordinator |
-| `test/data/services/occurrence_sync_coordinator_test.dart` | **novo** — 5 testes |
-| `test/data/repositories/repositories_test.dart` | exclusão de drafts |
-| `test/data/services/capture_occurrence_service_test.dart` | draft fora da fila |
-| `test/data/services/occurrence_sync_service_test.dart` | `processPending` ignora draft |
-| `test/presentation/capture/capture_flow_test.dart` | expectativa pré-confirm |
+| `lib/platform/sync_foreground_platform.dart` | **novo** |
+| `lib/data/services/occurrence_sync_foreground_runner.dart` | **novo** |
+| `lib/data/fakes/fake_sync_foreground_platform.dart` | **novo** |
+| `android/.../SyncForegroundService.kt` | **novo** |
+| `android/.../MainActivity.kt` | MethodChannel |
+| `android/.../AndroidManifest.xml` | permissões + service |
+| `android/.../res/values/strings.xml` | **novo** |
+| `lib/app/di.dart` | registro runner + platform |
+| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | runner |
+| `lib/presentation/capture/occurrence_draft_form_screen.dart` | runner |
+| `lib/presentation/capture/capture_home_screen.dart` | runner |
+| `test/data/services/occurrence_sync_foreground_runner_test.dart` | **novo** — 3 testes |
 | `.cursor/docs/last_executed_task.md` | este relatório |

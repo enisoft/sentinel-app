@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../../core/sync/sync_failure_reason.dart';
 import '../../core/sync/sync_phase.dart';
 import '../../core/sync/sync_state.dart';
 import '../../core/auth/auth_messages.dart';
@@ -46,7 +47,7 @@ class OccurrenceSyncService {
   final SyncGateway _gateway;
   final AuthGateway _auth;
 
-  static const _validationPrefix = 'validation:';
+  static const _validationPrefix = SyncFailureReason.validationPrefix;
 
   Future<OccurrenceSyncResult> processPending() async {
     var synced = 0;

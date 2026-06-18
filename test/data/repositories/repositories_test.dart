@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sentinel_app/core/sync/sync_failure_reason.dart';
 import 'package:sentinel_app/core/sync/sync_phase.dart';
 import 'package:sentinel_app/core/sync/sync_state.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
@@ -223,6 +224,38 @@ void main() {
       final pending = await queueRepo.getPending();
 
       expect(pending.occurrences.map((o) => o.id), ['confirmed-occ']);
+      expect(pending.totalCount, 1);
+    });
+
+    test('getPending excludes permanent validation failures', () async {
+      await occurrenceRepo.createOccurrence(
+        id: 'validation-dead',
+        title: '',
+        description: '',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 1),
+      );
+      await occurrenceRepo.markMediaDone('validation-dead');
+      await occurrenceRepo.beginJsonSync('validation-dead');
+      await occurrenceRepo.recordFailure(
+        'validation-dead',
+        SyncPhase.jsonSyncing,
+        '${SyncFailureReason.validationPrefix}O título é obrigatório.',
+      );
+
+      await occurrenceRepo.createOccurrence(
+        id: 'retryable-occ',
+        title: 'T',
+        description: 'D',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 2),
+      );
+
+      final pending = await queueRepo.getPending();
+
+      expect(pending.occurrences.map((o) => o.id), ['retryable-occ']);
       expect(pending.totalCount, 1);
     });
 

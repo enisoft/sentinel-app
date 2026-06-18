@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/di.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
 import '../../data/services/capture_occurrence_service.dart';
+import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import 'occurrence_draft_form_screen.dart';
@@ -14,6 +15,7 @@ class CaptureHomeScreen extends StatefulWidget {
     this.captureService,
     this.authGateway,
     this.syncCoordinator,
+    this.syncForegroundRunner,
     this.catalogSyncWarning,
     this.onRetryCatalogSync,
   });
@@ -21,6 +23,7 @@ class CaptureHomeScreen extends StatefulWidget {
   final CaptureOccurrenceService? captureService;
   final AuthGateway? authGateway;
   final OccurrenceSyncCoordinator? syncCoordinator;
+  final OccurrenceSyncForegroundRunner? syncForegroundRunner;
   final String? catalogSyncWarning;
   final VoidCallback? onRetryCatalogSync;
 
@@ -39,8 +42,11 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
   OccurrenceSyncCoordinator get _syncCoordinator =>
       widget.syncCoordinator ?? getIt<OccurrenceSyncCoordinator>();
 
+  OccurrenceSyncForegroundRunner get _syncForegroundRunner =>
+      widget.syncForegroundRunner ?? getIt<OccurrenceSyncForegroundRunner>();
+
   Future<void> _onSyncNow() async {
-    await _syncCoordinator.syncNow();
+    await _syncForegroundRunner.runIfPending();
   }
 
   Future<void> _onCapturePressed() async {

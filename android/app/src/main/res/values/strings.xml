@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_foreground_channel_name">Sincronização Sentinel</string>
+    <string name="sync_foreground_channel_description">Notificações enquanto ocorrências são sincronizadas em segundo plano.</string>
+    <string name="sync_foreground_notification_title">Sincronizando ocorrências…</string>
+    <string name="sync_foreground_notification_text">Upload e envio em andamento.</string>
+</resources>

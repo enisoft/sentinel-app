@@ -24,7 +24,9 @@ import '../data/services/bootstrap_service.dart';
 import '../data/services/capture_occurrence_service.dart';
 import '../data/services/catalog_sync_service.dart';
 import '../data/services/occurrence_sync_coordinator.dart';
+import '../data/services/occurrence_sync_foreground_runner.dart';
 import '../data/services/occurrence_sync_service.dart';
+import '../platform/sync_foreground_platform.dart';
 import '../domain/gateways/auth_gateway.dart';
 import '../domain/gateways/media_uploader.dart';
 import '../domain/gateways/sync_gateway.dart';
@@ -75,6 +77,7 @@ Future<void> configureDependenciesForTesting(
   LocationSource? locationSource,
   HashService? hashService,
   OccurrenceSyncCoordinator? occurrenceSyncCoordinator,
+  SyncForegroundPlatform? syncForegroundPlatform,
 }) async {
   await getIt.reset();
 
@@ -97,6 +100,7 @@ Future<void> configureDependenciesForTesting(
     syncGateway: syncGateway,
     mediaUploader: mediaUploader,
     occurrenceSyncCoordinator: occurrenceSyncCoordinator,
+    syncForegroundPlatform: syncForegroundPlatform,
   );
 
   _registerCaptureServices(
@@ -113,6 +117,7 @@ Future<void> _registerCore(
   SyncGateway? syncGateway,
   MediaUploader? mediaUploader,
   OccurrenceSyncCoordinator? occurrenceSyncCoordinator,
+  SyncForegroundPlatform? syncForegroundPlatform,
 }) async {
   getIt.registerSingleton<AppDatabase>(db);
   getIt.registerLazySingleton(() => OccurrenceRepository(getIt()));
@@ -178,6 +183,22 @@ Future<void> _registerCore(
   );
   getIt.registerLazySingleton(
     () => BootstrapService(getIt(), getIt()),
+  );
+
+  if (syncForegroundPlatform != null) {
+    getIt.registerSingleton<SyncForegroundPlatform>(syncForegroundPlatform);
+  } else {
+    getIt.registerLazySingleton<SyncForegroundPlatform>(
+      createSyncForegroundPlatform,
+    );
+  }
+
+  getIt.registerLazySingleton(
+    () => OccurrenceSyncForegroundRunner(
+      coordinator: getIt(),
+      queueRepository: getIt(),
+      platform: getIt(),
+    ),
   );
 }
 
