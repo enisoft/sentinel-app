@@ -3,29 +3,53 @@
 App móvel **offline-first** do ecossistema Sentinel (Flutter/Android). Tudo é salvo
 localmente primeiro e sincronizado depois.
 
+**Arquitetura detalhada (estado pós-E10):** [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md)
+
 Documentação de referência: [`docs/REFERENCES.md`](docs/REFERENCES.md).
 
-## Arquitetura
+## Estado atual (E10)
 
-Estrutura **layer-first** (camadas horizontais):
+| Sub-épico | Status |
+|-----------|--------|
+| E10.0 — login Supabase, `/me`, catálogo offline | ✅ |
+| E10.1 — `SyncGatewayHttp` (`POST /occurrences/sync`) | ✅ |
+| E10.2 — upload TUS (`MediaUploader` / `TusMediaUploader`) | ✅ |
+| E10.3a — background (FGS + UIDT) | ⏳ pendente |
+| E10.3b — política Wi-Fi para vídeo | ⏳ pendente |
+| E9 fase 2 — câmera real | ⏳ pendente (`FakeDeviceCameraSource` em produção) |
+
+## Arquitetura (resumo)
+
+Estrutura **layer-first**:
 
 ```
 lib/
-  app/           # bootstrap, DI
-  core/          # config, regras puras (máquina de estados da fila)
+  app/           # bootstrap, DI (get_it)
+  core/          # config, máquina de estados da fila
   domain/        # contratos (gateways, models)
-  data/          # drift, repositórios, remote API
+  data/          # drift, repositórios, remote API, TUS
   presentation/  # telas e widgets
 ```
 
-**DI:** [`get_it`](https://pub.dev/packages/get_it) — registro leve de banco, auth e repositórios.
+**Persistência:** [drift](https://drift.simonbinder.eu/) (SQLite) — ocorrências, fila de sync,
+catálogo offline, perfil em cache.
 
-**Persistência:** [drift](https://drift.simonbinder.eu/) (SQLite) com tabelas operacionais + catálogo offline.
+**Sessão:** JWT em `flutter_secure_storage` (Keystore), não SharedPreferences (ENI-33).
 
 ## Configuração de ambiente
 
 1. Copie `.env.example` para `.env` na raiz do projeto.
-2. Preencha as variáveis (emulador Android usa `10.0.2.2` para localhost do host):
+2. Preencha as variáveis:
+
+| Variável | Exemplo (emulador) |
+|----------|-------------------|
+| `SUPABASE_URL` | `http://10.0.2.2:54321` |
+| `SUPABASE_ANON_KEY` | saída de `npx supabase status -o env` |
+| `API_BASE_URL` | `http://10.0.2.2:8000/api/v1` |
+
+**Emulador Android:** `10.0.2.2` = localhost do host.
+
+**Device físico:** use o IP da máquina na rede local (não `10.0.2.2`).
 
 ```bash
 # No sentinel-backend:
@@ -36,16 +60,6 @@ php artisan db:seed
 php artisan sentinel:create-operator operador@test.com Senha123! "Operador Teste"
 ```
 
-| Variável | Exemplo (emulador) |
-|----------|-------------------|
-| `SUPABASE_URL` | `http://10.0.2.2:54321` |
-| `SUPABASE_ANON_KEY` | saída de `npx supabase status -o env` |
-| `API_BASE_URL` | `http://10.0.2.2:8000/api/v1` |
-
-Em dispositivo físico, substitua `10.0.2.2` pelo IP da máquina na rede local.
-
-Adicione `.env` em `pubspec.yaml` → `assets` localmente se preferir não editar `.env.example`.
-
 ## Comandos
 
 ```bash
@@ -55,22 +69,13 @@ flutter test
 flutter run
 ```
 
-## Conectividade (E10.0)
+## Fluxo offline-first (resumo)
 
-- Login Supabase (e-mail/senha) → JWT persistido
-- `GET /api/v1/me` no startup → perfil em cache drift
-- Catálogo delta (`observables`, `categories`, `municipalities`) → drift
-- Falha de catálogo não bloqueia captura offline
+- Sem rede no bootstrap: operador **permanece logado** se já tiver perfil em cache; só
+  `401` HTTP real desloga (ENI-38).
+- Captura offline → fila Drift → sync (TUS mídia, depois JSON) no cold start ou após
+  confirmar rascunho.
+- Sync ao reconectar com app aberto: **não** implementado (melhoria ENI-39).
 
-## Fila de sync
-
-Estados: `local_saved → media_uploading → media_done → json_syncing → synced` (+ `failed`).
-
-A fronteira de upload/sync HTTP é `SyncGateway` (fase futura).
-
-## Fora de escopo (fases futuras)
-
-- Upload TUS e `POST /occurrences/sync` / `POST /check-ins/sync`
-- Câmera/GPS reais no device (E9-fase2)
-- Inbox de tasks
-- WorkManager / Foreground Service
+Ver [`docs/ARQUITETURA.md`](docs/ARQUITETURA.md) para diagramas de componentes, path
+canônico `occurrences/{id}/{media_id}.{ext}` e detalhes de TUS.
