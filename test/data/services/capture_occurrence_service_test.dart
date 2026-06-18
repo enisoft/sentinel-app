@@ -112,6 +112,36 @@ void main() {
       expect(pending.occurrences.map((o) => o.id), [draft.occurrence.id]);
     });
 
+    test('confirm without note applies media-type defaults for API contract', () async {
+      final draft = await captureService.captureDraft();
+
+      await captureService.confirmDraft(
+        occurrenceId: draft.occurrence.id,
+        categoryId: 'cat-1',
+        observableId: 'obs-1',
+      );
+
+      final updated = await occurrenceRepo.getById(draft.occurrence.id);
+      expect(updated!.status, 'pending');
+      expect(updated.title, 'Ocorrência');
+      expect(updated.description, 'Registro fotográfico');
+      expect(updated.description, isNotEmpty);
+
+      final pending = await queueRepo.getPending();
+      expect(pending.occurrences.map((o) => o.id), [draft.occurrence.id]);
+    });
+
+    test('confirm without note uses audio default when primary media is audio', () async {
+      camera.nextMediaType = 'audio';
+      camera.nextMimeType = 'audio/mpeg';
+      final draft = await captureService.captureDraft();
+
+      await captureService.confirmDraft(occurrenceId: draft.occurrence.id);
+
+      final updated = await occurrenceRepo.getById(draft.occurrence.id);
+      expect(updated!.description, 'Registro de áudio');
+    });
+
     test('capture is not blocked by offline fakes (no network dependency)', () async {
       final draft = await captureService.captureDraft();
 

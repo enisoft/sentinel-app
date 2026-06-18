@@ -106,6 +106,12 @@ class OccurrenceRepository {
         .get();
   }
 
+  Future<OccurrenceMediaData?> getPrimaryMedia(String occurrenceId) async {
+    final media = await getMedia(occurrenceId);
+    if (media.isEmpty) return null;
+    return media.first;
+  }
+
   Future<Occurrence> updateDraft({
     required String id,
     String? categoryId,

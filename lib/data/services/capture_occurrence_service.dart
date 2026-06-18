@@ -1,3 +1,4 @@
+import '../../core/capture/occurrence_confirm_text.dart';
 import '../../core/capture/occurrence_lifecycle_status.dart';
 import '../../domain/services/camera_source.dart';
 import '../../domain/services/hash_service.dart';
@@ -80,13 +81,20 @@ class CaptureOccurrenceService {
     String? categoryId,
     String? observableId,
     String? note,
-  }) {
+  }) async {
+    final primaryMedia =
+        await _occurrenceRepository.getPrimaryMedia(occurrenceId);
+    final text = resolveOccurrenceConfirmText(
+      note: note,
+      mediaType: primaryMedia?.mediaType,
+    );
+
     return _occurrenceRepository.updateDraft(
       id: occurrenceId,
       categoryId: categoryId,
       observableId: observableId,
-      description: note,
-      title: note?.isNotEmpty == true ? note! : 'Ocorrência',
+      description: text.description,
+      title: text.title,
       status: OccurrenceLifecycleStatus.pending,
     );
   }

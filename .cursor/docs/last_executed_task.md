@@ -1,107 +1,66 @@
-# Última tarefa executada — ENI-42 / E10.3b: Foreground Service para sync em background
+# Última tarefa executada — P0 E9: defaults `title`/`description` no confirm
 
-**Status: implementado** — verificação manual G56/G65 pendente
+**Status: implementado** — verificação manual G56 pendente
 
-Pedido: sync com app minimizado / tela apagada via Foreground Service Android (`dataSync`), notificação persistente *"Sincronizando ocorrências…"*, worker ENI-41 em Dart. Sem UIDT (ENI-40), sem `connectivity_plus` (ENI-39).
+**Linear:** épico **E9 — Captura capture-first** (criar issue com o ID que você usar no board; sugestão de título abaixo).
 
 Data: 2026-06-18
 
 ---
 
+## Posicionamento Linear (copiar ao criar issue)
+
+| Campo | Valor |
+|-------|--------|
+| **Épico** | E9 — Captura capture-first (`docs/sentinel-scope.md` §3.2) |
+| **Título** | Confirm sem nota: defaults de `title` e `description` (foto/áudio/vídeo) |
+| **Prioridade** | P0 |
+| **Labels** | `capture`, `sync`, `bug`, `offline-first`, `contract-api` |
+| **Relação** | Bloqueador de sync — corrige 422 `validation:A descrição é obrigatória`; **não** é ENI-41/42 |
+| **Fora de escopo** | + outra mídia, aba rascunhos, preview UX P1, alterar API |
+
+**Descrição:** Operador pode enviar só mídia (nota opcional na UI). API exige `description` e `title` não vazios. `confirmDraft` agora preenche defaults por `mediaType` (`image` / `audio` / `video`) quando a nota está vazia.
+
+---
+
 ## Implementação
-
-### Modelo
-
-O sync **permanece 100% em Dart** (`OccurrenceSyncCoordinator` + `OccurrenceSyncService`). O FGS nativo só:
-
-1. Eleva prioridade do processo (`startForeground`)
-2. Exibe notificação ongoing
-3. Inicia **antes** de `syncNow()` e para quando `getPending().totalCount == 0`
-
-Disparo **somente** nos 3 pontos existentes (sem watcher automático na fila).
-
-### Dart
-
-| Componente | Função |
-|------------|--------|
-| `SyncForegroundPlatform` | MethodChannel `com.sentinel.sentinel_app/sync_foreground` |
-| `OccurrenceSyncForegroundRunner` | `runIfPending()` — FGS + coordinator |
-| `FakeSyncForegroundPlatform` | testes |
-
-### Android (Kotlin)
 
 | Arquivo | Função |
 |---------|--------|
-| `SyncForegroundService.kt` | FGS `dataSync`, notificação canal `sentinel_sync` |
-| `MainActivity.kt` | MethodChannel start/stop + `POST_NOTIFICATIONS` |
-| `AndroidManifest.xml` | permissões + declaração do service |
-| `res/values/strings.xml` | textos da notificação |
+| `lib/core/capture/occurrence_confirm_text.dart` | `resolveOccurrenceConfirmText()` — nota trim ou defaults por mídia |
+| `lib/data/services/capture_occurrence_service.dart` | `confirmDraft` busca mídia primária e aplica helper |
+| `lib/data/repositories/occurrence_repository.dart` | `getPrimaryMedia()` — primeiro item por `sort_order` |
 
-### Pontos de disparo
+### Defaults (nota vazia)
 
-- `AppBootstrapScreen` → `runner.runIfPending()`
-- `OccurrenceDraftFormScreen` → `unawaited(runner.runIfPending())`
-- `CaptureHomeScreen` → botão sync via `runner.runIfPending()`
+| `mediaType` | `description` | `title` |
+|-------------|---------------|---------|
+| `image` | Registro fotográfico | Ocorrência |
+| `audio` | Registro de áudio | Ocorrência |
+| `video` | Registro de vídeo | Ocorrência |
+| outro/ausente | Registro de ocorrência | Ocorrência |
 
-### Limite MVP (aceito)
+`updateDraftForm` continua gravando a nota crua no rascunho; defaults **somente no confirm**.
 
-FGS `dataSync` tem teto **~6h/dia** no Android 15 — UIDT em ENI-40 pós-MVP.
+### Testes
 
----
-
-## Testes automatizados
-
-**`flutter test` → 78 passed** (+3 novos no foreground runner)
-
-| Teste | Verifica |
-|-------|----------|
-| start antes de sync, stop quando fila vazia | FGS lifecycle |
-| skip quando fila vazia | sem start desnecessário |
-| não stop se ainda há pendentes | fila parcial |
-
-Cobertura instrumentada Android: fora de escopo — verificação manual no device.
+- `test/core/capture/occurrence_confirm_text_test.dart`
+- `test/data/services/capture_occurrence_service_test.dart` — confirm sem nota (image + audio)
 
 ---
 
-## Verificação manual — device G56/G65 (pendente)
+## Verificação manual G56 (aceite)
 
-| # | Passo | Evidência | Status |
-|---|-------|-----------|--------|
-| 1 | Logar online; capturar e **confirmar** | 1 pendente | ⬜ |
-| 2 | Minimizar / apagar tela durante sync | Notificação *"Sincronizando ocorrências…"* | ⬜ |
-| 3 | Aguardar conclusão | Notificação some; fila 0 | ⬜ |
-| 4 | Postgres + Storage | `SELECT id, synced_at ...` + objeto no bucket | ⬜ |
-| 5 | Android 13+: aceitar permissão de notificação | prompt na 1ª execução | ⬜ |
-
-```powershell
-adb -s <device> exec-out run-as com.sentinel.sentinel_app cat app_flutter/sentinel.db > sentinel.db
-sqlite3 sentinel.db "SELECT sync_state, COUNT(*) FROM occurrences WHERE status='pending' GROUP BY sync_state;"
-```
+1. Device com `.env` apontando para backend de dev.
+2. Capturar foto **sem** preencher nota no form.
+3. Confirmar → sync (botão ou FGS se ENI-42 commitado).
+4. **Esperado:** Postgres com `description` = `Registro fotográfico` (ou tipo correspondente); sem `failed_reason` `validation:` no Drift.
+5. Repetir com nota preenchida → `description` = texto da nota.
 
 ---
 
-## AUDITORIA
+## Backlog futuro (não neste ticket)
 
-Orquestração nativa sobre worker já auditado (ENI-41/E10.1-10.2). Sem mudança de contrato HTTP/auth.
-
-**Veredito:** não escalar — testes Dart + verificação manual device.
-
----
-
-## Arquivos alterados / criados
-
-| Arquivo | Mudança |
-|---------|---------|
-| `lib/platform/sync_foreground_platform.dart` | **novo** |
-| `lib/data/services/occurrence_sync_foreground_runner.dart` | **novo** |
-| `lib/data/fakes/fake_sync_foreground_platform.dart` | **novo** |
-| `android/.../SyncForegroundService.kt` | **novo** |
-| `android/.../MainActivity.kt` | MethodChannel |
-| `android/.../AndroidManifest.xml` | permissões + service |
-| `android/.../res/values/strings.xml` | **novo** |
-| `lib/app/di.dart` | registro runner + platform |
-| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | runner |
-| `lib/presentation/capture/occurrence_draft_form_screen.dart` | runner |
-| `lib/presentation/capture/capture_home_screen.dart` | runner |
-| `test/data/services/occurrence_sync_foreground_runner_test.dart` | **novo** — 3 testes |
-| `.cursor/docs/last_executed_task.md` | este relatório |
+- E9 — Anexar múltiplas mídias à mesma ocorrência (+ outra captura)
+- E9 — Tela/lista de rascunhos pendentes de confirmar
+- P1 — Preview/copy unificada na home (foto/vídeo/áudio)
