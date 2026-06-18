@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -13,13 +14,16 @@ class ApiClient {
     required AppConfig config,
     required AuthGateway authGateway,
     http.Client? httpClient,
+    Duration requestTimeout = const Duration(seconds: 30),
   })  : _baseUrl = config.apiBaseUrl,
         _auth = authGateway,
-        _http = httpClient ?? http.Client();
+        _http = httpClient ?? http.Client(),
+        _requestTimeout = requestTimeout;
 
   final String _baseUrl;
   final AuthGateway _auth;
   final http.Client _http;
+  final Duration _requestTimeout;
 
   Future<OperatorProfile> getMe() async {
     final response = await _get('/me');
@@ -37,6 +41,13 @@ class ApiClient {
   Future<CatalogDeltaResponse> getCatalogMunicipalities({String? updatedSince}) =>
       _getCatalog('municipalities', updatedSince);
 
+  Future<List<String>> postOccurrencesSync(Map<String, dynamic> body) async {
+    final response = await _post('/occurrences/sync', body);
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = decoded['data'] as Map<String, dynamic>;
+    return (data['ids'] as List<dynamic>).cast<String>();
+  }
+
   Future<CatalogDeltaResponse> _getCatalog(
     String entity,
     String? updatedSince,
@@ -50,20 +61,48 @@ class ApiClient {
     );
   }
 
-  Future<http.Response> _get(String path) async {
+  Future<http.Response> _get(String path) {
+    return _authorizedRequest(
+      (uri, headers) => _http.get(uri, headers: headers),
+      path,
+    );
+  }
+
+  Future<http.Response> _post(String path, Map<String, dynamic> body) {
+    return _authorizedRequest(
+      (uri, headers) => _http.post(
+        uri,
+        headers: headers,
+        body: jsonEncode(body),
+      ),
+      path,
+      extraHeaders: const {'Content-Type': 'application/json'},
+    );
+  }
+
+  Future<http.Response> _authorizedRequest(
+    Future<http.Response> Function(Uri uri, Map<String, String> headers) send,
+    String path, {
+    Map<String, String> extraHeaders = const {},
+  }) async {
     final token = _auth.accessToken;
     if (token == null) {
       throw ApiException(401, 'Token de autenticação ausente.');
     }
 
     final uri = Uri.parse('$_baseUrl$path');
-    final response = await _http.get(
-      uri,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+    final headers = {
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+      ...extraHeaders,
+    };
+
+    http.Response response;
+    try {
+      response = await send(uri, headers).timeout(_requestTimeout);
+    } on TimeoutException {
+      throw ApiException(408, 'Tempo esgotado na comunicação com o servidor.');
+    }
 
     if (response.statusCode == 401) {
       throw ApiException(401, _extractMessage(response));

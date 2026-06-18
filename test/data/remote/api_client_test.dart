@@ -109,5 +109,131 @@ void main() {
         throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 401)),
       );
     });
+
+    test('request timeout throws ApiException 408', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        requestTimeout: const Duration(milliseconds: 50),
+        httpClient: MockClient((_) async {
+          await Future<void>.delayed(const Duration(seconds: 1));
+          return http.Response('', 200);
+        }),
+      );
+
+      expect(
+        () => client.getMe(),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 408)
+              .having((e) => e.message, 'message', contains('Tempo esgotado')),
+        ),
+      );
+    });
+
+    test('postOccurrencesSync sends JSON and parses data.ids', () async {
+      Map<String, dynamic>? capturedBody;
+
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(token: 'jwt-sync'),
+        httpClient: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/v1/occurrences/sync');
+          expect(request.headers['Authorization'], 'Bearer jwt-sync');
+          expect(request.headers['Content-Type'], 'application/json');
+          capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(
+            jsonEncode({
+              'message': 'Ocorrências sincronizadas com sucesso.',
+              'data': {
+                'synced_count': 1,
+                'created_count': 1,
+                'updated_count': 0,
+                'ids': ['occ-1'],
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final ids = await client.postOccurrencesSync({
+        'occurrences': [
+          {'id': 'occ-1', 'title': 'T', 'description': 'D'},
+        ],
+      });
+
+      expect(ids, ['occ-1']);
+      expect(capturedBody?['occurrences'], isNotNull);
+      final occurrence = (capturedBody!['occurrences'] as List).single
+          as Map<String, dynamic>;
+      expect(occurrence.containsKey('reported_by'), isFalse);
+    });
+
+    test('postOccurrencesSync 401 throws ApiException', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((_) async {
+          return http.Response(
+            jsonEncode({'message': 'Token de autenticação inválido.'}),
+            401,
+          );
+        }),
+      );
+
+      expect(
+        () => client.postOccurrencesSync({'occurrences': []}),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.isUnauthorized, 'isUnauthorized', isTrue),
+        ),
+      );
+    });
+
+    test('postOccurrencesSync 422 throws validation ApiException', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((_) async {
+          return http.Response(
+            jsonEncode({'message': 'title é obrigatório.'}),
+            422,
+          );
+        }),
+      );
+
+      expect(
+        () => client.postOccurrencesSync({'occurrences': []}),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.isValidation, 'isValidation', isTrue),
+        ),
+      );
+    });
+
+    test('postOccurrencesSync 500 throws server ApiException', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((_) async {
+          return http.Response(
+            jsonEncode({'message': 'Erro interno.'}),
+            500,
+          );
+        }),
+      );
+
+      expect(
+        () => client.postOccurrencesSync({'occurrences': []}),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.isServerError, 'isServerError', isTrue)
+              .having((e) => e.isRetryable, 'isRetryable', isTrue),
+        ),
+      );
+    });
   });
 }

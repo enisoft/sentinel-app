@@ -6,6 +6,7 @@ import 'package:sentinel_app/core/sync/sync_state.dart';
 import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
 import 'package:sentinel_app/data/fakes/fake_location_source.dart';
+import 'package:sentinel_app/data/fakes/fake_sync_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/repositories/catalog_repository.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
@@ -28,6 +29,7 @@ void main() {
       cameraSource: FakeCameraSource(),
       locationSource: FakeLocationSource(),
       hashService: FakeHashService(),
+      syncGateway: FakeSyncGateway(),
     );
     captureService = getIt<CaptureOccurrenceService>();
     occurrenceRepo = getIt<OccurrenceRepository>();
@@ -93,6 +95,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('confirm_button')));
     await tester.pumpAndSettle();
+    await tester.pump();
 
     expect(find.byType(CaptureHomeScreen), findsOneWidget);
     expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
@@ -105,6 +108,6 @@ void main() {
     expect(occurrence.categoryId, 'cat-ui');
     expect(occurrence.observableId, 'obs-ui');
     expect(occurrence.description, 'Nota UI');
-    expect(occurrence.syncState, SyncState.localSaved);
+    expect(occurrence.syncState, SyncState.jsonSyncing);
   });
 }

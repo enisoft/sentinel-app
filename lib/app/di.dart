@@ -9,7 +9,9 @@ import '../data/auth/supabase_session_keys.dart';
 import '../data/fakes/fake_camera_source.dart';
 import '../data/fakes/fake_hash_service.dart';
 import '../data/fakes/fake_location_source.dart';
+import '../data/fakes/fake_sync_gateway.dart';
 import '../data/gateways/supabase_auth_gateway.dart';
+import '../data/gateways/sync_gateway_http.dart';
 import '../data/local/app_database.dart';
 import '../data/remote/api_client.dart';
 import '../data/repositories/catalog_repository.dart';
@@ -20,7 +22,9 @@ import '../data/repositories/sync_queue_repository.dart';
 import '../data/services/bootstrap_service.dart';
 import '../data/services/capture_occurrence_service.dart';
 import '../data/services/catalog_sync_service.dart';
+import '../data/services/occurrence_sync_service.dart';
 import '../domain/gateways/auth_gateway.dart';
+import '../domain/gateways/sync_gateway.dart';
 import '../domain/services/camera_source.dart';
 import '../domain/services/hash_service.dart';
 import '../domain/services/location_source.dart';
@@ -62,6 +66,7 @@ Future<void> configureDependenciesForTesting(
   AppConfig? config,
   AuthGateway? authGateway,
   ApiClient? apiClient,
+  SyncGateway? syncGateway,
   CameraSource? cameraSource,
   LocationSource? locationSource,
   HashService? hashService,
@@ -80,7 +85,12 @@ Future<void> configureDependenciesForTesting(
   final auth = authGateway ?? _UnimplementedAuthGateway();
   getIt.registerSingleton<AuthGateway>(auth);
 
-  await _registerCore(db, testConfig, apiClient: apiClient);
+  await _registerCore(
+    db,
+    testConfig,
+    apiClient: apiClient,
+    syncGateway: syncGateway,
+  );
 
   _registerCaptureServices(
     cameraSource: cameraSource ?? FakeCameraSource(),
@@ -93,6 +103,7 @@ Future<void> _registerCore(
   AppDatabase db,
   AppConfig config, {
   ApiClient? apiClient,
+  SyncGateway? syncGateway,
 }) async {
   getIt.registerSingleton<AppDatabase>(db);
   getIt.registerLazySingleton(() => OccurrenceRepository(getIt()));
@@ -108,6 +119,24 @@ Future<void> _registerCore(
 
   getIt.registerLazySingleton<ApiClient>(
     () => apiClient ?? ApiClient(config: config, authGateway: getIt()),
+  );
+
+  getIt.registerLazySingleton<SyncGateway>(
+    () =>
+        syncGateway ??
+        SyncGatewayHttp(
+          apiClient: getIt(),
+          occurrenceRepository: getIt(),
+        ),
+  );
+
+  getIt.registerLazySingleton(
+    () => OccurrenceSyncService(
+      queueRepository: getIt(),
+      occurrenceRepository: getIt(),
+      syncGateway: getIt(),
+      authGateway: getIt(),
+    ),
   );
 
   getIt.registerLazySingleton(
@@ -158,8 +187,14 @@ class _UnimplementedAuthGateway implements AuthGateway {
   String? get accessToken => null;
 
   @override
+  String? get loginNotice => null;
+
+  @override
+  void clearLoginNotice() {}
+
+  @override
   Future<void> signIn({required String email, required String password}) async {}
 
   @override
-  Future<void> signOut() async {}
+  Future<void> signOut({String? loginNotice}) async {}
 }

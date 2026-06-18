@@ -260,6 +260,32 @@ class OccurrenceRepository {
     return _requireOccurrence(id);
   }
 
+  /// Preenche `remote_path` stub para mídia sem upload TUS (E10.1).
+  Future<void> ensureStubRemotePaths(String occurrenceId) async {
+    final media = await getMedia(occurrenceId);
+    for (final item in media) {
+      if (item.remotePath != null) continue;
+      final ext = _extensionFromMimeType(item.mimeType);
+      final stubPath = 'occurrences/$occurrenceId/${item.id}.$ext';
+      await (_db.update(_db.occurrenceMedia)..where((t) => t.id.equals(item.id)))
+          .write(
+        OccurrenceMediaCompanion(remotePath: Value(stubPath)),
+      );
+    }
+  }
+
+  static String _extensionFromMimeType(String mimeType) {
+    return switch (mimeType) {
+      'image/jpeg' => 'jpg',
+      'image/png' => 'png',
+      'image/webp' => 'webp',
+      'audio/mp4' => 'm4a',
+      'audio/mpeg' => 'mp3',
+      'video/mp4' => 'mp4',
+      _ => mimeType.contains('/') ? mimeType.split('/').last : 'bin',
+    };
+  }
+
   Future<Occurrence> retry(String id) async {
     final occurrence = await _requireOccurrence(id);
     final failedPhase = occurrence.failedPhase;
