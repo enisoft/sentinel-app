@@ -78,6 +78,7 @@ Future<void> configureDependenciesForTesting(
   HashService? hashService,
   OccurrenceSyncCoordinator? occurrenceSyncCoordinator,
   SyncForegroundPlatform? syncForegroundPlatform,
+  OccurrenceSyncForegroundRunner? occurrenceSyncForegroundRunner,
 }) async {
   await getIt.reset();
 
@@ -101,6 +102,7 @@ Future<void> configureDependenciesForTesting(
     mediaUploader: mediaUploader,
     occurrenceSyncCoordinator: occurrenceSyncCoordinator,
     syncForegroundPlatform: syncForegroundPlatform,
+    occurrenceSyncForegroundRunner: occurrenceSyncForegroundRunner,
   );
 
   _registerCaptureServices(
@@ -118,6 +120,7 @@ Future<void> _registerCore(
   MediaUploader? mediaUploader,
   OccurrenceSyncCoordinator? occurrenceSyncCoordinator,
   SyncForegroundPlatform? syncForegroundPlatform,
+  OccurrenceSyncForegroundRunner? occurrenceSyncForegroundRunner,
 }) async {
   getIt.registerSingleton<AppDatabase>(db);
   getIt.registerLazySingleton(() => OccurrenceRepository(getIt()));
@@ -193,13 +196,19 @@ Future<void> _registerCore(
     );
   }
 
-  getIt.registerLazySingleton(
-    () => OccurrenceSyncForegroundRunner(
-      coordinator: getIt(),
-      queueRepository: getIt(),
-      platform: getIt(),
-    ),
-  );
+  if (occurrenceSyncForegroundRunner != null) {
+    getIt.registerSingleton<OccurrenceSyncForegroundRunner>(
+      occurrenceSyncForegroundRunner,
+    );
+  } else {
+    getIt.registerLazySingleton(
+      () => OccurrenceSyncForegroundRunner(
+        coordinator: getIt(),
+        queueRepository: getIt(),
+        platform: getIt(),
+      ),
+    );
+  }
 }
 
 void _registerCaptureFakes() {

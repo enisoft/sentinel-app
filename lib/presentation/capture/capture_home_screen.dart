@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
+import '../../core/sync/sync_foreground_notification_text.dart';
 import '../../data/services/capture_occurrence_service.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
@@ -146,17 +147,67 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
                   ValueListenableBuilder<OccurrenceSyncCoordinatorState>(
                     valueListenable: _syncCoordinator.state,
                     builder: (context, syncState, _) {
+                      final progressLabel =
+                          syncState.syncProgressCurrent != null &&
+                                  syncState.syncProgressTotal != null
+                              ? SyncForegroundNotificationText.syncingProgress(
+                                  current: syncState.syncProgressCurrent!,
+                                  total: syncState.syncProgressTotal!,
+                                )
+                              : null;
+
                       return Column(
                         children: [
                           if (syncState.pendingCount > 0)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                '${syncState.pendingCount} pendente(s)',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(color: Colors.white70),
+                              child: Container(
+                                key: const Key('pending_sync_badge'),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.shade700,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  '${syncState.pendingCount} pendente(s)',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ),
+                            ),
+                          if (progressLabel != null)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      key: Key('sync_progress_indicator'),
+                                      strokeWidth: 2,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    key: const Key('sync_progress_label'),
+                                    progressLabel,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: Colors.white70),
+                                  ),
+                                ],
                               ),
                             ),
                           if (syncState.lastResult != null &&
@@ -177,10 +228,11 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
                             padding: const EdgeInsets.only(bottom: 16),
                             child: FilledButton.tonal(
                               key: const Key('sync_now_button'),
-                              onPressed: syncState.isSyncing ? null : _onSyncNow,
+                              onPressed:
+                                  syncState.isSyncInProgress ? null : _onSyncNow,
                               child: Text(
-                                syncState.isSyncing
-                                    ? 'Sincronizando...'
+                                syncState.isSyncInProgress
+                                    ? (progressLabel ?? 'Sincronizando...')
                                     : 'Sincronizar agora',
                               ),
                             ),

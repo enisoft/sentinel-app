@@ -1,66 +1,89 @@
-# Última tarefa executada — P0 E9: defaults `title`/`description` no confirm
+# Última tarefa executada — ENI-49: Sync manual-first + badge de pendentes
 
 **Status: implementado** — verificação manual G56 pendente
 
-**Linear:** épico **E9 — Captura capture-first** (criar issue com o ID que você usar no board; sugestão de título abaixo).
+**Linear:** ENI-49 — Sync manual-first + badge de pendentes na home
 
-Data: 2026-06-18
+Data: 2026-07-02
 
 ---
 
-## Posicionamento Linear (copiar ao criar issue)
+## Posicionamento Linear
 
 | Campo | Valor |
 |-------|--------|
-| **Épico** | E9 — Captura capture-first (`docs/sentinel-scope.md` §3.2) |
-| **Título** | Confirm sem nota: defaults de `title` e `description` (foto/áudio/vídeo) |
-| **Prioridade** | P0 |
-| **Labels** | `capture`, `sync`, `bug`, `offline-first`, `contract-api` |
-| **Relação** | Bloqueador de sync — corrige 422 `validation:A descrição é obrigatória`; **não** é ENI-41/42 |
-| **Fora de escopo** | + outra mídia, aba rascunhos, preview UX P1, alterar API |
+| **Issue** | ENI-49 |
+| **Título** | Sync manual-first + badge de pendentes na home |
+| **Prioridade** | P1 |
+| **Labels** | `sync`, `offline-first`, `ux` |
+| **Relação** | Complementa ENI-41 (botão manual + watchPending); remove peso no login |
+| **Fora de escopo** | Contrato API, fila, FGS runner, UIDT, auditoria fundação |
 
-**Descrição:** Operador pode enviar só mídia (nota opcional na UI). API exige `description` e `title` não vazios. `confirmDraft` agora preenche defaults por `mediaType` (`image` / `audio` / `video`) quando a nota está vazia.
+---
+
+## Decisão
+
+Sync **não** roda sozinho no login nem ao confirmar rascunho. O operador dispara via botão **"Sincronizar agora"** (ENI-41) ou FGS (quando o drain já está em andamento). Badge de pendentes compensa a falta de sync automático.
+
+---
+
+## Gatilhos de `runIfPending` — antes vs depois
+
+| Gatilho | Antes (ENI-42) | Depois (ENI-49) |
+|---------|----------------|-----------------|
+| Cold start (`AppBootstrapScreen`) | Sim | **Não** |
+| Confirmação de rascunho (`OccurrenceDraftFormScreen`) | Sim | **Não** |
+| Botão "Sincronizar agora" (`CaptureHomeScreen`) | Sim | **Sim** |
+| FGS (`OccurrenceSyncForegroundRunner`) | Só via `runIfPending` | Inalterado |
 
 ---
 
 ## Implementação
 
-| Arquivo | Função |
-|---------|--------|
-| `lib/core/capture/occurrence_confirm_text.dart` | `resolveOccurrenceConfirmText()` — nota trim ou defaults por mídia |
-| `lib/data/services/capture_occurrence_service.dart` | `confirmDraft` busca mídia primária e aplica helper |
-| `lib/data/repositories/occurrence_repository.dart` | `getPrimaryMedia()` — primeiro item por `sort_order` |
+| Arquivo | Mudança |
+|---------|---------|
+| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | Removido `runIfPending()` pós-bootstrap |
+| `lib/presentation/capture/occurrence_draft_form_screen.dart` | Removido `unawaited(runIfPending())` pós-confirm |
+| `lib/presentation/capture/capture_home_screen.dart` | Badge com destaque visual (`orange.shade700`, negrito, `Key('pending_sync_badge')`) |
+| `lib/app/di.dart` | Parâmetro opcional `occurrenceSyncForegroundRunner` em `configureDependenciesForTesting` |
+| `test/support/counting_occurrence_sync_foreground_runner.dart` | Helper de teste para contar chamadas |
+| `test/presentation/bootstrap/app_bootstrap_screen_test.dart` | Bootstrap não dispara sync com itens pendentes |
+| `test/presentation/capture/capture_flow_test.dart` | Badge reativo, confirm sem auto-sync, botão manual |
 
-### Defaults (nota vazia)
+### Badge na home
 
-| `mediaType` | `description` | `title` |
-|-------------|---------------|---------|
-| `image` | Registro fotográfico | Ocorrência |
-| `audio` | Registro de áudio | Ocorrência |
-| `video` | Registro de vídeo | Ocorrência |
-| outro/ausente | Registro de ocorrência | Ocorrência |
+- Fonte: `OccurrenceSyncCoordinator.state.pendingCount` via `watchPending()` (ENI-41, exclui rascunhos ENI-44).
+- **N > 0:** chip laranja com texto branco em negrito.
+- **N == 0:** oculto.
+- Atualiza ao confirmar captura (N sobe) e ao concluir sync manual (N zera).
 
-`updateDraftForm` continua gravando a nota crua no rascunho; defaults **somente no confirm**.
+---
 
-### Testes
+## Testes (`flutter test` — 100 passed)
 
-- `test/core/capture/occurrence_confirm_text_test.dart`
-- `test/data/services/capture_occurrence_service_test.dart` — confirm sem nota (image + audio)
+Novos/ajustados:
+- `bootstrap does not call runIfPending automatically`
+- `capture button creates draft` — badge ausente com draft
+- `confirming form enqueues occurrence for sync` — badge `1 pendente(s)`; `syncState` permanece `localSaved` até sync manual
+- `confirming form does not trigger automatic sync`
+- `manual sync clears pending badge`
+- `sync now button calls runIfPending`
+
+```
+00:12 +100: All tests passed!
+```
 
 ---
 
 ## Verificação manual G56 (aceite)
 
-1. Device com `.env` apontando para backend de dev.
-2. Capturar foto **sem** preencher nota no form.
-3. Confirmar → sync (botão ou FGS se ENI-42 commitado).
-4. **Esperado:** Postgres com `description` = `Registro fotográfico` (ou tipo correspondente); sem `failed_reason` `validation:` no Drift.
-5. Repetir com nota preenchida → `description` = texto da nota.
+1. Abrir app com itens pendentes → **não** sincroniza sozinho; badge mostra N.
+2. Tocar "Sincronizar agora" → sincroniza → badge zera.
+3. Capturar offline → confirmar → badge incrementa.
+4. Capturar offline → sair sem confirmar (draft) → badge **não** conta.
 
 ---
 
-## Backlog futuro (não neste ticket)
+## Auditoria
 
-- E9 — Anexar múltiplas mídias à mesma ocorrência (+ outra captura)
-- E9 — Tela/lista de rascunhos pendentes de confirmar
-- P1 — Preview/copy unificada na home (foto/vídeo/áudio)
+Não exigida — remoção de gatilhos automáticos + widget de contador; sem mudança de contrato/auth/persistência/FGS.

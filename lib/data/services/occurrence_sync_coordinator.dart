@@ -11,6 +11,10 @@ abstract class OccurrenceSyncCoordinator {
 
   Future<OccurrenceSyncResult?> syncNow();
 
+  void reportSyncProgress({required int current, required int total});
+
+  void clearSyncProgress();
+
   void dispose();
 }
 
@@ -86,6 +90,21 @@ class DefaultOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
         _emitState(_state.value.copyWith(status: OccurrenceSyncStatus.idle));
       }
     }
+  }
+
+  @override
+  void reportSyncProgress({required int current, required int total}) {
+    _emitState(
+      _state.value.copyWith(
+        syncProgressCurrent: current,
+        syncProgressTotal: total,
+      ),
+    );
+  }
+
+  @override
+  void clearSyncProgress() {
+    _emitState(_state.value.copyWith(clearSyncProgress: true));
   }
 
   void _emitState(OccurrenceSyncCoordinatorState next) {

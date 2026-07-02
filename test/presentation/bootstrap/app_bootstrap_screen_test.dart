@@ -14,7 +14,9 @@ import 'package:sentinel_app/core/config/app_config.dart';
 import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/remote/api_client.dart';
+import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/presentation/auth/auth_gate.dart';
+import '../../support/counting_occurrence_sync_foreground_runner.dart';
 
 void main() {
   late AppDatabase db;
@@ -136,6 +138,73 @@ void main() {
     expect(find.text(AuthMessages.sessionExpired), findsOneWidget);
     expect(find.text('Sincronizando...'), findsNothing);
     expect(find.byKey(const Key('login_submit')), findsOneWidget);
+  });
+
+  Future<void> seedPendingOccurrence() async {
+    final occurrenceRepo = OccurrenceRepository(db);
+    await occurrenceRepo.createOccurrence(
+      id: 'pending-bootstrap',
+      title: 'Test',
+      description: 'Desc',
+      status: 'pending',
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1),
+    );
+  }
+
+  testWidgets('bootstrap does not call runIfPending automatically', (tester) async {
+    await configureDependenciesForTesting(
+      db,
+      authGateway: auth,
+      apiClient: ApiClient(
+        config: config,
+        authGateway: auth,
+        httpClient: MockClient((request) async {
+          final path = request.url.path;
+          if (path.endsWith('/me')) {
+            return http.Response(
+              jsonEncode({
+                'id': 'user-1',
+                'name': 'Operador',
+                'role': 'agente',
+                'municipality_id': 'mun-1',
+                'photo_path': null,
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          if (path.contains('/catalog/')) {
+            return http.Response(
+              jsonEncode({
+                'updated_since': null,
+                'server_time': '2026-06-17T00:00:00Z',
+                'items': [],
+                'deleted_ids': [],
+              }),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response('', 404);
+        }),
+      ),
+    );
+
+    final countingRunner = installCountingForegroundRunner();
+    await seedPendingOccurrence();
+
+    await tester.pumpWidget(
+      MaterialApp(home: AuthGate(authGateway: auth)),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(countingRunner.runIfPendingCallCount, 0);
+    expect(find.byKey(const Key('capture_button')), findsOneWidget);
+    expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
+    expect(find.text('1 pendente(s)'), findsOneWidget);
   });
 
   testWidgets('successful bootstrap reaches capture home', (tester) async {

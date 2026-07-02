@@ -155,4 +155,18 @@ void main() {
     expect(coordinator.state.value.status, OccurrenceSyncStatus.idle);
     expect(coordinator.state.value.pendingCount, 0);
   });
+
+  test('reportSyncProgress exposes current and total in state', () async {
+    coordinator.reportSyncProgress(current: 2, total: 5);
+
+    expect(coordinator.state.value.syncProgressCurrent, 2);
+    expect(coordinator.state.value.syncProgressTotal, 5);
+    expect(coordinator.state.value.isSyncInProgress, isTrue);
+
+    coordinator.clearSyncProgress();
+
+    expect(coordinator.state.value.syncProgressCurrent, isNull);
+    expect(coordinator.state.value.syncProgressTotal, isNull);
+    expect(coordinator.state.value.isSyncInProgress, isFalse);
+  });
 }

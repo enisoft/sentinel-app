@@ -1,11 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../data/services/capture_occurrence_service.dart';
-import '../../data/services/occurrence_sync_foreground_runner.dart';
 
 /// Form mínimo pós-captura — nunca bloqueia o disparo anterior.
 class OccurrenceDraftFormScreen extends StatefulWidget {
@@ -73,8 +70,6 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
         note: _emptyToNull(_noteController.text),
       );
 
-      unawaited(getIt<OccurrenceSyncForegroundRunner>().runIfPending());
-
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -96,11 +91,12 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Detalhes da ocorrência')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             FutureBuilder<List<CatalogItem>>(
               future: _categoriesFuture,
               builder: (context, snapshot) {
@@ -190,6 +186,7 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -21,23 +21,37 @@ class OccurrenceSyncCoordinatorState {
     this.status = OccurrenceSyncStatus.idle,
     this.lastResult,
     this.pendingCount = 0,
+    this.syncProgressCurrent,
+    this.syncProgressTotal,
   });
 
   final OccurrenceSyncStatus status;
   final OccurrenceSyncLastResult? lastResult;
   final int pendingCount;
+  final int? syncProgressCurrent;
+  final int? syncProgressTotal;
 
   bool get isSyncing => status == OccurrenceSyncStatus.syncing;
+
+  bool get isSyncInProgress =>
+      isSyncing || (syncProgressCurrent != null && syncProgressTotal != null);
 
   OccurrenceSyncCoordinatorState copyWith({
     OccurrenceSyncStatus? status,
     OccurrenceSyncLastResult? lastResult,
     int? pendingCount,
+    int? syncProgressCurrent,
+    int? syncProgressTotal,
+    bool clearSyncProgress = false,
   }) {
     return OccurrenceSyncCoordinatorState(
       status: status ?? this.status,
       lastResult: lastResult ?? this.lastResult,
       pendingCount: pendingCount ?? this.pendingCount,
+      syncProgressCurrent:
+          clearSyncProgress ? null : (syncProgressCurrent ?? this.syncProgressCurrent),
+      syncProgressTotal:
+          clearSyncProgress ? null : (syncProgressTotal ?? this.syncProgressTotal),
     );
   }
 }

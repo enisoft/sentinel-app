@@ -75,6 +75,19 @@ class FakeOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
   }
 
   @override
+  void reportSyncProgress({required int current, required int total}) {
+    _state.value = _state.value.copyWith(
+      syncProgressCurrent: current,
+      syncProgressTotal: total,
+    );
+  }
+
+  @override
+  void clearSyncProgress() {
+    _state.value = _state.value.copyWith(clearSyncProgress: true);
+  }
+
+  @override
   void dispose() {
     _state.dispose();
   }
