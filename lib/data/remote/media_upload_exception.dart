@@ -7,6 +7,8 @@ class MediaUploadException implements Exception {
 
   bool get isUnauthorized => statusCode == 401;
 
+  bool get isNetworkError => statusCode == null;
+
   @override
   String toString() => 'MediaUploadException($statusCode): $message';
 }

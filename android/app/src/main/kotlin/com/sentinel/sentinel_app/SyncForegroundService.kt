@@ -23,8 +23,23 @@ class SyncForegroundService : Service() {
                 stopSelf()
                 return START_NOT_STICKY
             }
+            ACTION_UPDATE -> {
+                val title = intent.getStringExtra(EXTRA_TITLE)
+                val text = intent.getStringExtra(EXTRA_TEXT)
+                if (title != null && text != null) {
+                    val notification = buildNotification(title, text)
+                    val manager =
+                        getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    manager.notify(NOTIFICATION_ID, notification)
+                }
+                return START_STICKY
+            }
             else -> {
-                val notification = buildNotification()
+                val title = intent?.getStringExtra(EXTRA_TITLE)
+                    ?: getString(R.string.sync_foreground_notification_title)
+                val text = intent?.getStringExtra(EXTRA_TEXT)
+                    ?: getString(R.string.sync_foreground_notification_text)
+                val notification = buildNotification(title, text)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     startForeground(
                         NOTIFICATION_ID,
@@ -40,7 +55,7 @@ class SyncForegroundService : Service() {
         }
     }
 
-    private fun buildNotification(): Notification {
+    private fun buildNotification(title: String, text: String): Notification {
         createNotificationChannel()
 
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
@@ -52,8 +67,8 @@ class SyncForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.sync_foreground_notification_title))
-            .setContentText(getString(R.string.sync_foreground_notification_text))
+            .setContentTitle(title)
+            .setContentText(text)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -81,6 +96,10 @@ class SyncForegroundService : Service() {
 
     companion object {
         const val ACTION_STOP = "com.sentinel.sentinel_app.action.STOP_SYNC_FOREGROUND"
+        private const val ACTION_UPDATE =
+            "com.sentinel.sentinel_app.action.UPDATE_SYNC_FOREGROUND"
+        private const val EXTRA_TITLE = "title"
+        private const val EXTRA_TEXT = "text"
         private const val CHANNEL_ID = "sentinel_sync"
         private const val NOTIFICATION_ID = 42001
 
@@ -92,6 +111,15 @@ class SyncForegroundService : Service() {
         fun stop(context: Context) {
             val intent = Intent(context, SyncForegroundService::class.java).apply {
                 action = ACTION_STOP
+            }
+            context.startService(intent)
+        }
+
+        fun updateNotification(context: Context, title: String, text: String) {
+            val intent = Intent(context, SyncForegroundService::class.java).apply {
+                action = ACTION_UPDATE
+                putExtra(EXTRA_TITLE, title)
+                putExtra(EXTRA_TEXT, text)
             }
             context.startService(intent)
         }

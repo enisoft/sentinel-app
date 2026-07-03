@@ -10,6 +10,11 @@ abstract class SyncForegroundPlatform {
   Future<void> stopForegroundService();
 
   Future<void> requestNotificationPermission();
+
+  Future<void> updateForegroundNotification({
+    required String title,
+    required String text,
+  });
 }
 
 class MethodChannelSyncForegroundPlatform implements SyncForegroundPlatform {
@@ -37,6 +42,18 @@ class MethodChannelSyncForegroundPlatform implements SyncForegroundPlatform {
     if (!Platform.isAndroid) return;
     await _channel.invokeMethod<void>('requestNotificationPermission');
   }
+
+  @override
+  Future<void> updateForegroundNotification({
+    required String title,
+    required String text,
+  }) async {
+    if (!Platform.isAndroid) return;
+    await _channel.invokeMethod<void>('updateForegroundNotification', {
+      'title': title,
+      'text': text,
+    });
+  }
 }
 
 class NoOpSyncForegroundPlatform implements SyncForegroundPlatform {
@@ -48,6 +65,12 @@ class NoOpSyncForegroundPlatform implements SyncForegroundPlatform {
 
   @override
   Future<void> requestNotificationPermission() async {}
+
+  @override
+  Future<void> updateForegroundNotification({
+    required String title,
+    required String text,
+  }) async {}
 }
 
 SyncForegroundPlatform createSyncForegroundPlatform() {

@@ -31,6 +31,14 @@ class MainActivity : FlutterActivity() {
                     requestNotificationPermissionIfNeeded()
                     result.success(null)
                 }
+                "updateForegroundNotification" -> {
+                    val title = call.argument<String>("title")
+                    val text = call.argument<String>("text")
+                    if (title != null && text != null) {
+                        SyncForegroundService.updateNotification(this, title, text)
+                    }
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }

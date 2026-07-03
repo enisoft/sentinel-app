@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentinel_app/core/capture/occurrence_lifecycle_status.dart';
@@ -83,16 +85,43 @@ void main() {
     await seedPendingOccurrence('occ-b');
 
     coordinator.onSyncNow = () async {
-      await occurrenceRepo.markMediaDone('occ-a');
-      await occurrenceRepo.beginJsonSync('occ-a');
-      await occurrenceRepo.markSynced('occ-a');
+      final pending = await queueRepo.getPendingOccurrences();
+      final id = pending.first.id;
+      await occurrenceRepo.markMediaDone(id);
+      await occurrenceRepo.beginJsonSync(id);
+      await occurrenceRepo.markSynced(id);
       return const OccurrenceSyncResult(synced: 1, failed: 0, skipped: 0);
     };
 
     await runner.runIfPending();
 
+    expect(coordinator.syncNowCallCount, 2);
     expect(platform.startCallCount, 1);
-    expect(platform.stopCallCount, 0);
-    expect((await queueRepo.getPending()).totalCount, 1);
+    expect(platform.stopCallCount, 1);
+    expect((await queueRepo.getPending()).totalCount, 0);
+  });
+
+  test('runIfPending coalesces concurrent calls into one drain cycle', () async {
+    await seedPendingOccurrence('occ-1');
+
+    final gate = Completer<void>();
+    coordinator.onSyncNow = () async {
+      await gate.future;
+      await occurrenceRepo.markMediaDone('occ-1');
+      await occurrenceRepo.beginJsonSync('occ-1');
+      await occurrenceRepo.markSynced('occ-1');
+      return const OccurrenceSyncResult(synced: 1, failed: 0, skipped: 0);
+    };
+
+    final first = runner.runIfPending();
+    final second = runner.runIfPending();
+
+    gate.complete();
+    final results = await Future.wait([first, second]);
+
+    expect(coordinator.syncNowCallCount, 1);
+    expect(results[0]!.synced, 1);
+    expect(results[1]!.synced, 1);
+    expect(platform.startCallCount, 1);
   });
 }

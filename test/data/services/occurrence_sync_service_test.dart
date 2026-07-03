@@ -308,6 +308,41 @@ void main() {
     expect(occurrence!.syncState, SyncState.synced);
   });
 
+  test('processPending syncs three or more occurrences in one cycle', () async {
+    for (var i = 1; i <= 4; i++) {
+      await seedOccurrence(id: 'occ-batch-$i');
+    }
+    fakeGateway.confirmedIds = [
+      'occ-batch-1',
+      'occ-batch-2',
+      'occ-batch-3',
+      'occ-batch-4',
+    ];
+
+    final result = await service.processPending();
+
+    expect(result.synced, 4);
+    expect(result.failed, 0);
+    expect(fakeGateway.syncCallCount, 4);
+    final pending = await queueRepo.getPendingOccurrences();
+    expect(pending, isEmpty);
+  });
+
+  test('processPending picks up occurrences added during drain', () async {
+    await seedOccurrence(id: 'occ-first');
+    fakeGateway.onBeforeSync = () async {
+      if (fakeGateway.syncCallCount == 1) {
+        await seedOccurrence(id: 'occ-late');
+      }
+    };
+    fakeGateway.confirmedIds = ['occ-first', 'occ-late'];
+
+    final result = await service.processPending();
+
+    expect(result.synced, 2);
+    expect(fakeGateway.syncCallCount, 2);
+  });
+
   test('processPending ignores unconfirmed drafts', () async {
     await occurrenceRepo.createOccurrence(
       id: 'draft-only',
