@@ -1,8 +1,8 @@
-# Última tarefa executada — ENI-52 (correção): vídeo estável
+# Última tarefa executada — ENI-60: câmera "pega-tudo"
 
 **Status: implementado** — verificação manual G56/G86 pendente
 
-**Linear:** ENI-52 — Vídeo real in-app: wakelock + estabilidade em gravação longa
+**Linear:** ENI-60 — capturas em sequência sem sair do preview
 
 Data: 2026-07-03
 
@@ -10,27 +10,29 @@ Data: 2026-07-03
 
 ## Escopo
 
-Correção do crash em gravação ~5 min no G56 (~4 min, arquivo 350 MB+). Manter tela ligada durante gravação (wakelock). Diagnosticar e corrigir gargalos de memória no pipeline pós-captura. Limite rígido de 5 min mantido.
+Inverter o fluxo pós-captura: a câmera permanece no preview entre foto/vídeo; o form (categoria/observável/nota) só abre em **Concluir**. Multi-mídia (ENI-56) e pipeline de hash/GPS/mime/sort_order (ENI-50/56) intactos. Limite 5 min + wakelock por clipe (ENI-52) preservados.
 
-**Fora de escopo:** compactação H.264 pós-captura (ENI-47).
+**Fora de escopo:** abas/home (ENI-57), zoom (ENI-58), loading (ENI-59).
 
 ---
 
-## Diagnóstico (antes da correção)
+## Fluxo
 
-| Componente | Leitura do arquivo | Veredito |
-|------------|-------------------|----------|
-| **Hash** (`CryptoHashService`) | `sha256.bind(file.openRead())` — streaming por chunks do SO | ✅ Já em streaming; não carrega arquivo inteiro em RAM |
-| **TUS** (`TusMediaUploader`) | `tus_client_dart` `_getData()` → `file.openRead(start, end)` com `maxChunkSize` 6 MB | ✅ Já em streaming; pico ~6 MB em RAM por chunk |
-| **Stop vídeo** (`DeviceCameraSource`) | `File.copy(temp → dest)` duplicava o arquivo em disco | ⚠️ Pico de I/O e ~2× espaço em disco no stop (não OOM direto, mas pressiona device fraco) |
-| **Captura** | `ResolutionPreset.high` (~1080p) | ⚠️ **Provável causa principal do crash** — encoder + buffers do preview acumulam RAM ao longo de 4+ min; bitrate alto → ~70 MB/min → 5 min ≈ 350 MB+ (bate com relato G56) |
-| **Tela apagando** | Sem wakelock | ⚠️ **Causa secundária confirmada** — tela apaga → app pausa → gravação interrompida/perdida |
+```
+Preview → capturar (foto ou vídeo) → anexa ao rascunho local_saved → permanece no preview
+       → carrinho (contador + thumbnail da última) → revisar/remover
+       → Concluir → form → Confirmar → fila (sync manual, ENI-49)
+Sair sem concluir = rascunho local fora do sync (ENI-44)
+```
 
-**Extrapolação de tamanho (~1 min, G56, antes da correção):**
-- `ResolutionPreset.high`: estimativa **~60–80 MB/min** → 5 min ≈ **300–400 MB** (consistente com crash ~4 min / 350 MB+)
-- `ResolutionPreset.medium` (720p, após correção): estimativa **~25–40 MB/min** → 5 min ≈ **125–200 MB**
-
-Não foi possível rodar logcat/memory profiler neste ambiente (sem device físico conectado). O diagnóstico estático aponta encoder em alta resolução + ausência de wakelock como causas; hash/TUS não precisaram de alteração.
+| Ação | Comportamento |
+|------|----------------|
+| 1ª captura | `createDraftFromCapture` — cria ocorrência draft + mídia `sort_order=0` |
+| N-ésima captura | `attachCaptureToDraft` — mesma occurrence, `sort_order` incremental |
+| Toque no carrinho | Bottom sheet com lista; remove via `removeMediaFromDraft` |
+| Concluir | Abre `OccurrenceDraftFormScreen` |
+| Confirmar no form | `confirmDraft` → `pending` na fila; limpa rascunho ativo no preview |
+| Voltar do form sem confirmar | Rascunho ativo permanece; pode capturar mais |
 
 ---
 
@@ -38,59 +40,61 @@ Não foi possível rodar logcat/memory profiler neste ambiente (sem device físi
 
 | Arquivo | Mudança |
 |---------|---------|
-| `pubspec.yaml` | `wakelock_plus` — manter tela ligada durante gravação |
-| `lib/presentation/capture/in_app_capture_controls.dart` | `WakelockPlus.enable()` ao iniciar gravação; `disable()` ao parar/dispose; fire-and-forget para não bloquear UI |
-| `lib/data/device/device_camera_source.dart` | `ResolutionPreset.medium` (~720p) em vez de `high`; `rename` com fallback `copy` no stop (evita duplicar arquivo grande em disco) |
-| `test/data/device/crypto_hash_service_test.dart` | Teste de hash em arquivo **8 MB** escrito em chunks de 64 KB |
+| `lib/presentation/capture/capture_home_screen.dart` | Rascunho ativo (`_activeDraftId` + `_draftMedia`); não navega ao capturar; carrinho + Concluir em overlay; sheet de revisão/remoção |
+| `lib/presentation/capture/in_app_capture_controls.dart` | `onCaptureComplete` assíncrono; `onTap` sempre ativo (avalia `_canPress` no toque); wakelock `disable` fire-and-forget (evita shutter morto após 1º vídeo) |
+| `lib/presentation/capture/in_app_capture_screen.dart` | Callback assíncrono compatível |
+| `lib/data/services/capture_occurrence_service.dart` | `isDraft(occurrenceId)` — detecta se form confirmou |
+| `lib/data/fakes/fake_camera_source.dart` | Paths únicos por clipe de vídeo (2º, 3º…) |
+| `test/presentation/capture/capture_flow_test.dart` | Fluxo pega-tudo + regressões atualizadas |
 
-### Inalterados (já corretos)
+### Correção colateral (shutter após 1º vídeo)
 
-- `lib/data/device/crypto_hash_service.dart` — streaming SHA-256
-- `lib/data/remote/tus_media_uploader.dart` — TUS chunked 6 MB
-- `lib/core/capture/video_recording_policy.dart` — limite 300s
-
-### Fluxo corrigido
-
-1. Operador inicia vídeo → **wakelock ativo** (tela não apaga)
-2. Gravação em **720p** — menor pressão de RAM do encoder e arquivo menor
-3. Auto-stop em 05:00 → `stopVideoRecording` → **rename** (sem cópia duplicada quando possível)
-4. Hash streaming → rascunho → upload TUS chunked (inalterado)
+`await WakelockPlus.disable()` no `finally` do stop não completava de forma confiável em testes (e podia atrasar o release de `_busy` no device). O `disable` passou a ser fire-and-forget, como o `enable`. Além disso, o shutter não usa mais `onTap: _canPress ? handler : null` (ficava `null` se o rebuild com `_busy=false` fosse perdido).
 
 ---
 
-## Testes (`flutter test` — 124 passed)
+## Testes (`flutter test` — 127 passed)
 
 ```
-00:05 +124: All tests passed!
+00:06 +127: All tests passed!
 ```
 
-- `test/core/capture/video_recording_policy_test.dart` — limite 300s (mantido)
-- `test/data/device/crypto_hash_service_test.dart` — hash 8 MB via streaming
-- `test/presentation/capture/capture_flow_test.dart` — gravação vídeo anexa ao rascunho (mantido)
+Cenários ENI-60:
+
+- capturar 2 vídeos + 1 foto sem sair do preview → rascunho com 3 mídias, `sort_order` `[0,1,2]`
+- remover 1 mídia do carrinho antes de concluir → rascunho com 2
+- concluir → form → confirmar → mídias na fila (mesma occurrence)
+- vídeo único anexa sem abrir form
+- regressões: sync manual, add/remove no form, modo foto/vídeo
 
 ---
 
 ## Arquivos tocados
 
 **Alterados:**
-- `pubspec.yaml`
+
+- `lib/presentation/capture/capture_home_screen.dart`
 - `lib/presentation/capture/in_app_capture_controls.dart`
-- `lib/data/device/device_camera_source.dart`
-- `test/data/device/crypto_hash_service_test.dart`
+- `lib/presentation/capture/in_app_capture_screen.dart`
+- `lib/data/services/capture_occurrence_service.dart`
+- `lib/data/fakes/fake_camera_source.dart`
+- `test/presentation/capture/capture_flow_test.dart`
 - `.cursor/docs/last_executed_task.md`
 
 ---
 
 ## Verificação manual G56 / G86 (aceite — pendente)
 
-1. Gravar **5 min completos** → tela permanece ligada → corta em 05:00 → salva → **não crasha**
-2. Relatar **tamanho real do arquivo** (esperado ~125–200 MB em 720p vs ~350 MB+ antes)
-3. Hash + upload TUS → Postgres + Storage (`content_hash`, path `.mp4`)
-4. Vídeo + foto na mesma ocorrência → ambos sobem
-5. Cortar rede no meio do upload do vídeo → retoma (TUS offset)
+1. Gravar vídeo → volta ao preview (não vai pro form)
+2. Gravar 2º vídeo → tirar 1 foto
+3. Carrinho mostra **3** (thumbnail da última)
+4. Toque no carrinho → remover 1 mídia → contador **2**
+5. **Concluir** → form → **Confirmar**
+6. Postgres: N linhas `occurrence_media`, mesma `occurrence_id`; Storage: N objetos
+7. Sair sem concluir: rascunho local, fora da fila de sync
 
 ---
 
 ## Auditoria
 
-Foco: integridade (hash streaming em arquivo grande) + estabilidade de memória (720p + wakelock). Hash e TUS já estavam corretos; ver [audit_2026-07-02_eni-52.md](audit_2026-07-02_eni-52.md) para contrato base.
+**Não escalada.** UI/fluxo sobre pipeline ENI-50/56 já pronto. Sem alteração de modelo Drift, serializer ou fila de sync — apenas `isDraft` (leitura de status) e apresentação do rascunho multi-mídia no preview. Report + testes + device bastam.

@@ -73,6 +73,13 @@ class CaptureOccurrenceService {
     return _occurrenceRepository.getMedia(occurrenceId);
   }
 
+  /// `true` se a ocorrência existe e ainda está em status draft (fora da fila).
+  Future<bool> isDraft(String occurrenceId) async {
+    final occurrence = await _occurrenceRepository.getById(occurrenceId);
+    return occurrence != null &&
+        occurrence.status == OccurrenceLifecycleStatus.draft;
+  }
+
   /// Captura mídia adicional e anexa ao mesmo rascunho (sem UI — preferir preview + [attachCaptureToDraft]).
   Future<OccurrenceMediaData> addMediaToDraft(String occurrenceId) async {
     final capture = await _cameraSource.capture();

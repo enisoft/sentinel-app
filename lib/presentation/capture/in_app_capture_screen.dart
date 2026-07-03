@@ -39,7 +39,7 @@ class _InAppCaptureScreenState extends State<InAppCaptureScreen> {
     return true;
   }
 
-  void _onCaptureComplete(CaptureResult result) {
+  Future<void> _onCaptureComplete(CaptureResult result) async {
     Navigator.of(context).pop<CaptureResult>(result);
   }
 

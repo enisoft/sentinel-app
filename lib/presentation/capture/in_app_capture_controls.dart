@@ -21,7 +21,8 @@ class InAppCaptureControls extends StatefulWidget {
   });
 
   final CameraSource cameraSource;
-  final ValueChanged<CaptureResult> onCaptureComplete;
+  /// Chamado após foto ou fim de vídeo; pode ser assíncrono (ex.: anexar ao rascunho).
+  final Future<void> Function(CaptureResult capture) onCaptureComplete;
   final bool canInteract;
   final ValueChanged<String>? onError;
 
@@ -79,7 +80,7 @@ class _InAppCaptureControlsState extends State<InAppCaptureControls> {
     try {
       final result = await widget.cameraSource.capture();
       if (!mounted) return;
-      widget.onCaptureComplete(result);
+      await widget.onCaptureComplete(result);
     } on CameraPermissionDeniedException catch (error) {
       widget.onError?.call(error.message);
     } catch (error) {
@@ -138,18 +139,23 @@ class _InAppCaptureControlsState extends State<InAppCaptureControls> {
         durationSeconds: elapsed,
       );
       if (!mounted) return;
-      widget.onCaptureComplete(result);
+      await widget.onCaptureComplete(result);
     } on CameraPermissionDeniedException catch (error) {
       widget.onError?.call(error.message);
     } catch (error) {
       widget.onError?.call('Falha ao parar gravação: $error');
     } finally {
-      await _releaseRecordingWakelock();
+      // Fire-and-forget: await no disable() pode não completar em testes e
+      // deixaria _busy=true para sempre (shutter morto após o 1º vídeo).
+      unawaited(_releaseRecordingWakelock());
       if (mounted) {
         setState(() {
           _busy = false;
           _elapsedSeconds = 0;
         });
+      } else {
+        _busy = false;
+        _elapsedSeconds = 0;
       }
     }
   }
@@ -240,7 +246,9 @@ class _InAppCaptureControlsState extends State<InAppCaptureControls> {
           button: true,
           child: GestureDetector(
             key: const Key('capture_button'),
-            onTap: _canPress ? _onShutterPressed : null,
+            // Avalia _canPress no toque — evita onTap=null “preso” se o rebuild
+            // com _busy=false for perdido após attach ao rascunho.
+            onTap: _onShutterPressed,
             child: Container(
               width: 72,
               height: 72,

@@ -62,7 +62,17 @@ void main() {
     await db.close();
   });
 
-  testWidgets('capture button creates draft then shows form without blocking',
+  Future<void> captureAndStayOnPreview(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> finishDraftAndOpenForm(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('finish_draft_button')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('capture stays on preview with cart — form only after Concluir',
       (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -71,27 +81,121 @@ void main() {
     );
 
     expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
+    expect(find.byKey(const Key('draft_media_cart')), findsNothing);
+    expect(find.byKey(const Key('finish_draft_button')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('capture_button')));
-    await tester.pumpAndSettle();
+    await captureAndStayOnPreview(tester);
 
-    expect(find.byType(OccurrenceDraftFormScreen), findsOneWidget);
-    expect(find.byKey(const Key('category_field')), findsOneWidget);
+    expect(find.byType(CaptureHomeScreen), findsOneWidget);
+    expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
+    expect(find.byKey(const Key('draft_media_cart')), findsOneWidget);
+    expect(find.byKey(const Key('draft_media_count')), findsOneWidget);
+    expect(find.text('1'), findsOneWidget);
+    expect(find.byKey(const Key('finish_draft_button')), findsOneWidget);
     expect(find.byKey(const Key('pending_sync_badge')), findsNothing);
 
     final pendingBeforeConfirm = await queueRepo.getPending();
     expect(pendingBeforeConfirm.occurrences, isEmpty);
   });
 
-  testWidgets('confirming form enqueues occurrence for sync', (tester) async {
+  Future<void> recordOneVideo(WidgetTester tester) async {
+    await tester.tap(find.byKey(const Key('capture_button')));
+    // startVideoRecording é async: 1º pump processa busy, 2º aplica _recording.
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(const Key('recording_timer')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('sequential captures stay on preview with correct sort_order',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: CaptureHomeScreen(captureService: captureService),
       ),
     );
 
-    await tester.tap(find.byKey(const Key('capture_button')));
+    // 2 vídeos + 1 foto sem sair do preview
+    await tester.tap(find.text('Vídeo'));
     await tester.pumpAndSettle();
+    await recordOneVideo(tester);
+    await recordOneVideo(tester);
+
+    await tester.tap(find.text('Foto'));
+    await tester.pumpAndSettle();
+    await captureAndStayOnPreview(tester);
+
+    expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
+    expect(find.byKey(const Key('draft_media_cart')), findsOneWidget);
+    expect(find.byKey(const Key('draft_media_count')), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.descendant(
+        of: find.byKey(const Key('draft_media_count')),
+        matching: find.byType(Text),
+      )).data,
+      '3',
+    );
+
+    final pending = await queueRepo.getPending();
+    expect(pending.occurrences, isEmpty);
+
+    final occurrences = await db.select(db.occurrences).get();
+    expect(occurrences, hasLength(1));
+    final media = await occurrenceRepo.getMedia(occurrences.single.id);
+    expect(media, hasLength(3));
+    expect(media.map((m) => m.sortOrder), [0, 1, 2]);
+    expect(media[0].mediaType, 'video');
+    expect(media[1].mediaType, 'video');
+    expect(media[2].mediaType, 'image');
+  });
+
+  testWidgets('remove media from cart before finish updates draft', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    await captureAndStayOnPreview(tester);
+    await captureAndStayOnPreview(tester);
+    await captureAndStayOnPreview(tester);
+
+    expect(find.text('3'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('draft_media_cart')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('draft_media_cart_sheet')), findsOneWidget);
+
+    final occurrences = await db.select(db.occurrences).get();
+    final mediaBefore = await occurrenceRepo.getMedia(occurrences.single.id);
+    expect(mediaBefore, hasLength(3));
+
+    final toRemove = mediaBefore.last;
+    await tester.tap(find.byKey(Key('remove_media_${toRemove.id}')));
+    await tester.pumpAndSettle();
+
+    final mediaAfter = await occurrenceRepo.getMedia(occurrences.single.id);
+    expect(mediaAfter, hasLength(2));
+    expect(find.text('2'), findsOneWidget);
+    expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
+  });
+
+  testWidgets('finish then confirm enqueues all draft media', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    await captureAndStayOnPreview(tester);
+    await captureAndStayOnPreview(tester);
+
+    await finishDraftAndOpenForm(tester);
+
+    expect(find.byType(OccurrenceDraftFormScreen), findsOneWidget);
+    expect(find.byKey(const Key('category_field')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('category_field')));
     await tester.pumpAndSettle();
@@ -111,6 +215,7 @@ void main() {
 
     expect(find.byType(CaptureHomeScreen), findsOneWidget);
     expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
+    expect(find.byKey(const Key('draft_media_cart')), findsNothing);
     expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
     expect(find.text('1 pendente(s)'), findsOneWidget);
 
@@ -123,6 +228,46 @@ void main() {
     expect(occurrence.observableId, 'obs-ui');
     expect(occurrence.description, 'Nota UI');
     expect(occurrence.syncState, SyncState.localSaved);
+
+    final media = await occurrenceRepo.getMedia(occurrence.id);
+    expect(media, hasLength(2));
+  });
+
+  testWidgets('remove one then finish confirm enqueues remaining media',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    await captureAndStayOnPreview(tester);
+    await captureAndStayOnPreview(tester);
+    await captureAndStayOnPreview(tester);
+
+    await tester.tap(find.byKey(const Key('draft_media_cart')));
+    await tester.pumpAndSettle();
+
+    final occurrences = await db.select(db.occurrences).get();
+    final mediaBefore = await occurrenceRepo.getMedia(occurrences.single.id);
+    final toRemove = mediaBefore.first;
+    await tester.tap(find.byKey(Key('remove_media_${toRemove.id}')));
+    await tester.pumpAndSettle();
+
+    // Fecha o sheet (lista ainda tem itens).
+    Navigator.of(tester.element(find.byKey(const Key('draft_media_cart_sheet'))))
+        .pop();
+    await tester.pumpAndSettle();
+
+    await finishDraftAndOpenForm(tester);
+    await tester.tap(find.byKey(const Key('confirm_button')));
+    await tester.pumpAndSettle();
+    await tester.pump();
+
+    final pending = await queueRepo.getPending();
+    expect(pending.occurrences, hasLength(1));
+    final media = await occurrenceRepo.getMedia(pending.occurrences.single.id);
+    expect(media, hasLength(2));
   });
 
   testWidgets('confirming form does not trigger automatic sync', (tester) async {
@@ -134,8 +279,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const Key('capture_button')));
-    await tester.pumpAndSettle();
+    await captureAndStayOnPreview(tester);
+    await finishDraftAndOpenForm(tester);
 
     await tester.tap(find.byKey(const Key('category_field')));
     await tester.pumpAndSettle();
@@ -154,6 +299,21 @@ void main() {
     final pending = await queueRepo.getPending();
     expect(pending.occurrences, hasLength(1));
     expect(countingRunner.runIfPendingCallCount, 0);
+  });
+
+  testWidgets('sync now button is disabled when queue is empty', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final button = tester.widget<FilledButton>(
+      find.byKey(const Key('sync_now_button')),
+    );
+    expect(button.onPressed, isNull);
   });
 
   testWidgets('manual sync clears pending badge', (tester) async {
@@ -215,6 +375,11 @@ void main() {
 
     expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
 
+    final button = tester.widget<FilledButton>(
+      find.byKey(const Key('sync_now_button')),
+    );
+    expect(button.onPressed, isNotNull);
+
     await tester.tap(find.byKey(const Key('sync_now_button')));
     await tester.pumpAndSettle();
 
@@ -229,8 +394,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const Key('capture_button')));
-    await tester.pumpAndSettle();
+    await captureAndStayOnPreview(tester);
+    await finishDraftAndOpenForm(tester);
 
     await tester.tap(find.byKey(const Key('add_media_button')));
     await tester.pumpAndSettle();
@@ -254,8 +419,8 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const Key('capture_button')));
-    await tester.pumpAndSettle();
+    await captureAndStayOnPreview(tester);
+    await finishDraftAndOpenForm(tester);
 
     final form = tester.widget<OccurrenceDraftFormScreen>(
       find.byType(OccurrenceDraftFormScreen),
@@ -296,37 +461,34 @@ void main() {
     expect(find.text('Vídeo'), findsOneWidget);
   });
 
-  testWidgets('video recording attaches video media to draft', (tester) async {
+  testWidgets('video recording attaches video media to draft without leaving preview',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: CaptureHomeScreen(captureService: captureService),
       ),
     );
 
-    await tester.tap(find.byKey(const Key('capture_button')));
-    await tester.pumpAndSettle();
-
-    final form = tester.widget<OccurrenceDraftFormScreen>(
-      find.byType(OccurrenceDraftFormScreen),
-    );
-    final occurrenceId = form.occurrenceId;
-
-    await tester.tap(find.byKey(const Key('add_media_button')));
-    await tester.pumpAndSettle();
-
     await tester.tap(find.text('Vídeo'));
     await tester.pumpAndSettle();
+    await recordOneVideo(tester);
 
-    await tester.tap(find.byKey(const Key('capture_button')));
-    await tester.pumpAndSettle();
+    expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
+    expect(
+      tester.widget<Text>(find.descendant(
+        of: find.byKey(const Key('draft_media_count')),
+        matching: find.byType(Text),
+      )).data,
+      '1',
+    );
 
-    await tester.tap(find.byKey(const Key('capture_button')));
-    await tester.pumpAndSettle();
-
-    final media = await occurrenceRepo.getMedia(occurrenceId);
-    expect(media, hasLength(2));
-    expect(media.last.mediaType, 'video');
-    expect(media.last.mimeType, 'video/mp4');
-    expect(media.last.durationSeconds, greaterThanOrEqualTo(0));
+    final occurrences = await db.select(db.occurrences).get();
+    expect(occurrences, hasLength(1));
+    final media = await occurrenceRepo.getMedia(occurrences.single.id);
+    expect(media, hasLength(1));
+    expect(media.single.mediaType, 'video');
+    expect(media.single.mimeType, 'video/mp4');
+    expect(media.single.durationSeconds, greaterThanOrEqualTo(0));
   });
 }
+

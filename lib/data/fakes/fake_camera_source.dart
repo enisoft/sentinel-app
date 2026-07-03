@@ -53,8 +53,12 @@ class FakeCameraSource implements CameraSource {
   Future<CaptureResult> stopVideoRecording({required int durationSeconds}) async {
     stopVideoRecordingCallCount++;
     _recordingVideo = false;
+    final base = nextPath.endsWith('.mp4') ? nextPath : '$nextPath.mp4';
+    final path = stopVideoRecordingCallCount == 1
+        ? base
+        : base.replaceFirst(RegExp(r'\.mp4$'), '-$stopVideoRecordingCallCount.mp4');
     return CaptureResult(
-      localPath: nextPath.endsWith('.mp4') ? nextPath : '$nextPath.mp4',
+      localPath: path,
       mediaType: 'video',
       mimeType: 'video/mp4',
       capturedAt: _nextCapturedAt,
