@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../core/sync/occurrence_sync_coordinator_state.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
@@ -32,8 +33,16 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _tabIndex = 0;
   int _occurrencesRefreshToken = 0;
+  late final AuthGateway _auth;
+  late final OccurrenceSyncCoordinator _syncCoordinator;
 
-  AuthGateway get _auth => widget.authGateway ?? getIt<AuthGateway>();
+  @override
+  void initState() {
+    super.initState();
+    _auth = widget.authGateway ?? getIt<AuthGateway>();
+    _syncCoordinator =
+        widget.syncCoordinator ?? getIt<OccurrenceSyncCoordinator>();
+  }
 
   Future<void> _onLogout() async {
     await _auth.signOut();
@@ -94,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _tabIndex == 0
                 ? OccurrencesTab(
                     refreshToken: _occurrencesRefreshToken,
-                    syncCoordinator: widget.syncCoordinator,
+                    syncCoordinator: _syncCoordinator,
                     syncForegroundRunner: widget.syncForegroundRunner,
                   )
                 : const TasksTab(),
@@ -107,22 +116,36 @@ class _HomeScreenState extends State<HomeScreen> {
         icon: const Icon(Icons.add_a_photo_outlined),
         label: const Text('Adicionar ocorrência'),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        key: const Key('home_bottom_nav'),
-        currentIndex: _tabIndex,
-        onTap: (index) => setState(() => _tabIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            key: Key('occurrences_tab'),
-            icon: Icon(Icons.list_alt),
-            label: 'Ocorrências',
-          ),
-          BottomNavigationBarItem(
-            key: Key('tasks_tab'),
-            icon: Icon(Icons.task_alt),
-            label: 'Tasks',
-          ),
-        ],
+      bottomNavigationBar: ValueListenableBuilder<OccurrenceSyncCoordinatorState>(
+        valueListenable: _syncCoordinator.state,
+        builder: (context, syncState, _) {
+          final pendingCount = syncState.pendingCount;
+          return BottomNavigationBar(
+            key: const Key('home_bottom_nav'),
+            currentIndex: _tabIndex,
+            onTap: (index) => setState(() => _tabIndex = index),
+            items: [
+              BottomNavigationBarItem(
+                key: const Key('occurrences_tab'),
+                icon: Badge(
+                  key: const Key('occurrences_tab_badge'),
+                  isLabelVisible: pendingCount > 0,
+                  label: Text(
+                    key: const Key('occurrences_tab_badge_count'),
+                    pendingCount > 99 ? '99+' : '$pendingCount',
+                  ),
+                  child: const Icon(Icons.list_alt),
+                ),
+                label: 'Ocorrências',
+              ),
+              const BottomNavigationBarItem(
+                key: Key('tasks_tab'),
+                icon: Icon(Icons.task_alt),
+                label: 'Tasks',
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -53,6 +53,10 @@ void main() {
     expect(find.byKey(const Key('tasks_placeholder')), findsNothing);
     expect(find.byKey(const Key('sync_now_button')), findsOneWidget);
     expect(find.byKey(const Key('pending_sync_badge')), findsNothing);
+    expect(
+      tester.widget<Badge>(find.byKey(const Key('occurrences_tab_badge'))).isLabelVisible,
+      isFalse,
+    );
   });
 
   testWidgets('tasks tab shows placeholder without API calls', (tester) async {
@@ -113,6 +117,13 @@ void main() {
     expect(find.byKey(const Key('occurrence_item_pending-1')), findsOneWidget);
     expect(find.byKey(const Key('occurrence_item_synced-1')), findsOneWidget);
 
+    expect(find.byKey(const Key('occurrence_id_badge_draft-1')), findsOneWidget);
+    expect(find.byKey(const Key('occurrence_id_badge_pending-1')), findsOneWidget);
+    expect(find.byKey(const Key('occurrence_id_badge_synced-1')), findsOneWidget);
+    expect(find.text('draft-'), findsOneWidget);
+    expect(find.text('pendin'), findsOneWidget);
+    expect(find.text('synced'), findsOneWidget);
+
     expect(find.text('Rascunho local'), findsOneWidget);
     expect(find.text('Confirmada'), findsOneWidget);
     expect(find.text('Enviada'), findsOneWidget);
@@ -133,6 +144,29 @@ void main() {
     // Rascunho aparece na lista, mas não entra no badge de pendentes (ENI-44).
     expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
     expect(find.text('1 pendente(s)'), findsOneWidget);
+
+    final tabBadge = tester.widget<Badge>(
+      find.byKey(const Key('occurrences_tab_badge')),
+    );
+    expect(tabBadge.isLabelVisible, isTrue);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('occurrences_tab_badge_count'))).data,
+      '1',
+    );
+
+    // Badge do menu permanece visível na aba Tasks.
+    await tester.tap(find.text('Tasks'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<Badge>(find.byKey(const Key('occurrences_tab_badge'))).isLabelVisible,
+      isTrue,
+    );
+  });
+
+  test('occurrenceShortId keeps first six characters', () {
+    expect(occurrenceShortId('a1b2c3d4-e5f6-7890'), 'a1b2c3');
+    expect(occurrenceShortId('abc'), 'abc');
+    expect(occurrenceShortId('draft-1'), 'draft-');
   });
 
   test('occurrenceListStatusLabel maps lifecycle and sync states', () {

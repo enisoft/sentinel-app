@@ -199,10 +199,34 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final occurrence = _items[index];
+        final shortId = occurrenceShortId(occurrence.id);
         return ListTile(
           key: Key('occurrence_item_${occurrence.id}'),
           title: Text(_occurrenceTitle(occurrence)),
-          subtitle: Text(_formatOccurredAt(occurrence.occurredAt)),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_formatOccurredAt(occurrence.occurredAt)),
+              const SizedBox(height: 4),
+              Container(
+                key: Key('occurrence_id_badge_${occurrence.id}'),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  shortId,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: Colors.grey.shade700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                ),
+              ),
+            ],
+          ),
+          isThreeLine: true,
           trailing: Text(
             key: Key('occurrence_status_${occurrence.id}'),
             occurrenceListStatusLabel(occurrence),
@@ -248,6 +272,12 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
       SyncState.localSaved => Colors.orange.shade800,
     };
   }
+}
+
+/// Prefixo curto do id (estilo hash do GitHub) para localização em testes.
+String occurrenceShortId(String id) {
+  if (id.length <= 6) return id;
+  return id.substring(0, 6);
 }
 
 /// Rótulo de estado por item: rascunhos não contam como pendente de sync (ENI-44).
