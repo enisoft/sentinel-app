@@ -27,6 +27,11 @@ class CaptureOccurrenceService {
   /// Disparo: captura mídia + GPS + hash e persiste rascunho em `local_saved`.
   Future<CaptureDraftResult> captureDraft() async {
     final capture = await _cameraSource.capture();
+    return createDraftFromCapture(capture);
+  }
+
+  /// Persiste rascunho a partir de captura já concluída (foto ou vídeo).
+  Future<CaptureDraftResult> createDraftFromCapture(CaptureResult capture) async {
     final position = await _locationSource.getCurrentPosition();
     final contentHash = await _hashService.hashFile(capture.localPath);
 

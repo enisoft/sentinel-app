@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../core/capture/video_recording_policy.dart';
 import '../../domain/models/capture_result.dart';
 import '../../data/local/app_database.dart';
 import '../../data/repositories/catalog_repository.dart';
@@ -366,7 +367,45 @@ class _DraftMediaTile extends StatelessWidget {
         );
       }
     }
+    if (media.mediaType == 'video') {
+      return _videoPlaceholder();
+    }
     return _placeholder();
+  }
+
+  Widget _videoPlaceholder() {
+    final duration = media.durationSeconds;
+    return ColoredBox(
+      color: Colors.grey.shade800,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const Center(
+            child: Icon(Icons.videocam, color: Colors.white70, size: 32),
+          ),
+          if (duration != null)
+            Positioned(
+              right: 4,
+              bottom: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  formatRecordingElapsed(duration),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontFeatures: [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _placeholder() {

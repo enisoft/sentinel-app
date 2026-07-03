@@ -10,6 +10,10 @@ import 'minimal_jpeg_bytes.dart';
 /// Câmera fake para device sem câmera real — grava JPEG válido em disco para TUS.
 class FakeDeviceCameraSource implements CameraSource {
   int captureCallCount = 0;
+  bool _recordingVideo = false;
+
+  @override
+  bool get isRecordingVideo => _recordingVideo;
 
   @override
   Future<CaptureResult> capture() async {
@@ -22,6 +26,30 @@ class FakeDeviceCameraSource implements CameraSource {
       mimeType: 'image/jpeg',
       capturedAt: DateTime.now().toUtc(),
       sizeBytes: sizeBytes,
+    );
+  }
+
+  @override
+  Future<void> startVideoRecording() async {
+    _recordingVideo = true;
+  }
+
+  @override
+  Future<CaptureResult> stopVideoRecording({required int durationSeconds}) async {
+    _recordingVideo = false;
+    final dir = await getTemporaryDirectory();
+    final file = File(
+      p.join(dir.path, 'fake_capture_video.mp4'),
+    );
+    await file.writeAsBytes(kMinimalJpegBytes, flush: true);
+    final sizeBytes = await file.length();
+    return CaptureResult(
+      localPath: file.path,
+      mediaType: 'video',
+      mimeType: 'video/mp4',
+      capturedAt: DateTime.now().toUtc(),
+      sizeBytes: sizeBytes,
+      durationSeconds: durationSeconds,
     );
   }
 }

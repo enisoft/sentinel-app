@@ -9,6 +9,7 @@ import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/data/repositories/sync_queue_repository.dart';
 import 'package:sentinel_app/data/services/capture_occurrence_service.dart';
+import 'package:sentinel_app/domain/models/capture_result.dart';
 
 void main() {
   late AppDatabase db;
@@ -140,6 +141,67 @@ void main() {
 
       final updated = await occurrenceRepo.getById(draft.occurrence.id);
       expect(updated!.description, 'Registro de áudio');
+    });
+
+    test('createDraftFromCapture persists video with duration', () async {
+      final capture = CaptureResult(
+        localPath: '/fake/captures/video.mp4',
+        mediaType: 'video',
+        mimeType: 'video/mp4',
+        capturedAt: DateTime.utc(2026, 6, 15, 14, 0),
+        sizeBytes: 5 * 1024 * 1024,
+        durationSeconds: 42,
+      );
+
+      final draft = await captureService.createDraftFromCapture(capture);
+
+      expect(hashService.hashCallCount, 1);
+      final media = await occurrenceRepo.getMedia(draft.occurrence.id);
+      expect(media, hasLength(1));
+      expect(media.single.mediaType, 'video');
+      expect(media.single.mimeType, 'video/mp4');
+      expect(media.single.durationSeconds, 42);
+      expect(media.single.localPath, '/fake/captures/video.mp4');
+    });
+
+    test('attachCaptureToDraft attaches video with durationSeconds', () async {
+      final draft = await captureService.captureDraft();
+
+      await captureService.attachCaptureToDraft(
+        occurrenceId: draft.occurrence.id,
+        capture: CaptureResult(
+          localPath: '/fake/captures/clip.mp4',
+          mediaType: 'video',
+          mimeType: 'video/mp4',
+          capturedAt: DateTime.utc(2026, 6, 15, 14, 30),
+          sizeBytes: 2048,
+          durationSeconds: 15,
+        ),
+      );
+
+      final media = await occurrenceRepo.getMedia(draft.occurrence.id);
+      expect(media, hasLength(2));
+      final video = media.last;
+      expect(video.mediaType, 'video');
+      expect(video.mimeType, 'video/mp4');
+      expect(video.durationSeconds, 15);
+    });
+
+    test('confirm without note uses video default when primary media is video',
+        () async {
+      final draft = await captureService.createDraftFromCapture(
+        CaptureResult(
+          localPath: '/fake/captures/video.mp4',
+          mediaType: 'video',
+          mimeType: 'video/mp4',
+          capturedAt: DateTime.utc(2026, 6, 15, 14, 0),
+        ),
+      );
+
+      await captureService.confirmDraft(occurrenceId: draft.occurrence.id);
+
+      final updated = await occurrenceRepo.getById(draft.occurrence.id);
+      expect(updated!.description, 'Registro de vídeo');
     });
 
     test('capture without GPS degrades gracefully with null coords', () async {

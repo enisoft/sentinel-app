@@ -8,6 +8,7 @@ class FakeCameraSource implements CameraSource {
     this.nextMediaType = 'image',
     this.nextMimeType = 'image/jpeg',
     this.nextSizeBytes = 1024,
+    this.nextDurationSeconds,
     DateTime? nextCapturedAt,
   }) : _nextCapturedAt = nextCapturedAt ?? DateTime.utc(2026, 6, 15, 12, 0);
 
@@ -15,9 +16,17 @@ class FakeCameraSource implements CameraSource {
   String nextMediaType;
   String nextMimeType;
   int? nextSizeBytes;
+  int? nextDurationSeconds;
   final DateTime _nextCapturedAt;
 
   int captureCallCount = 0;
+  int startVideoRecordingCallCount = 0;
+  int stopVideoRecordingCallCount = 0;
+
+  bool _recordingVideo = false;
+
+  @override
+  bool get isRecordingVideo => _recordingVideo;
 
   @override
   Future<CaptureResult> capture() async {
@@ -30,6 +39,27 @@ class FakeCameraSource implements CameraSource {
       mimeType: nextMimeType,
       capturedAt: _nextCapturedAt,
       sizeBytes: nextSizeBytes,
+      durationSeconds: nextDurationSeconds,
+    );
+  }
+
+  @override
+  Future<void> startVideoRecording() async {
+    startVideoRecordingCallCount++;
+    _recordingVideo = true;
+  }
+
+  @override
+  Future<CaptureResult> stopVideoRecording({required int durationSeconds}) async {
+    stopVideoRecordingCallCount++;
+    _recordingVideo = false;
+    return CaptureResult(
+      localPath: nextPath.endsWith('.mp4') ? nextPath : '$nextPath.mp4',
+      mediaType: 'video',
+      mimeType: 'video/mp4',
+      capturedAt: _nextCapturedAt,
+      sizeBytes: nextSizeBytes ?? 1024 * 1024,
+      durationSeconds: durationSeconds,
     );
   }
 }

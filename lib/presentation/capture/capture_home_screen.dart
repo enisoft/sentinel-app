@@ -9,8 +9,10 @@ import '../../data/services/capture_occurrence_service.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
+import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
 import 'in_app_camera_preview.dart';
+import 'in_app_capture_controls.dart';
 import 'occurrence_draft_form_screen.dart';
 
 /// Home capture-first: câmera in-app (device) ou placeholder (testes/fake).
@@ -37,7 +39,6 @@ class CaptureHomeScreen extends StatefulWidget {
 }
 
 class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
-  bool _capturing = false;
   bool _cameraPermissionDenied = false;
   bool _cameraReady = false;
 
@@ -57,8 +58,7 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
     return source is DeviceCameraSource ? source : null;
   }
 
-  bool get _canCapture {
-    if (_capturing) return false;
+  bool get _canInteract {
     if (_deviceCameraSource != null) {
       return _cameraReady && !_cameraPermissionDenied;
     }
@@ -77,10 +77,40 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
     await _syncForegroundRunner.runIfPending();
   }
 
-  Future<void> _onCapturePressed() async {
-    if (!_canCapture) return;
-    setState(() => _capturing = true);
+  Future<void> _onCaptureComplete(CaptureResult capture) async {
+    try {
+      final draft = await _captureService.createDraftFromCapture(capture);
+      if (!mounted) return;
 
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => OccurrenceDraftFormScreen(
+            occurrenceId: draft.occurrence.id,
+            captureService: _captureService,
+          ),
+        ),
+      );
+    } on CameraPermissionDeniedException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Falha na captura: $error')),
+      );
+    }
+  }
+
+  void _onCaptureError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _onLegacyCapture() async {
     try {
       final draft = await _captureService.captureDraft();
       if (!mounted) return;
@@ -103,10 +133,6 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Falha na captura: $error')),
       );
-    } finally {
-      if (mounted) {
-        setState(() => _capturing = false);
-      }
     }
   }
 
@@ -271,30 +297,32 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
                       );
                     },
                   ),
-                  Text(
-                    'Toque para capturar',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Colors.white70,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  Semantics(
-                    label: 'Capturar ocorrência',
-                    button: true,
-                    child: GestureDetector(
-                      key: const Key('capture_button'),
-                      onTap: _canCapture ? _onCapturePressed : null,
-                      child: Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          color: _canCapture ? Colors.white : Colors.white38,
+                  if (_cameraSource != null)
+                    InAppCaptureControls(
+                      cameraSource: _cameraSource!,
+                      canInteract: _canInteract,
+                      onCaptureComplete: _onCaptureComplete,
+                      onError: _onCaptureError,
+                    )
+                  else
+                    Semantics(
+                      label: 'Capturar ocorrência',
+                      button: true,
+                      child: GestureDetector(
+                        key: const Key('capture_button'),
+                        onTap: _canInteract ? _onLegacyCapture : null,
+                        child: Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            color:
+                                _canInteract ? Colors.white : Colors.white38,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),

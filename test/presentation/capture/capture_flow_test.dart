@@ -283,4 +283,50 @@ void main() {
     expect(media, hasLength(1));
     expect(media.single.sortOrder, 0);
   });
+
+  testWidgets('capture mode toggle shows photo and video options', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    expect(find.byKey(const Key('capture_mode_toggle')), findsOneWidget);
+    expect(find.text('Foto'), findsOneWidget);
+    expect(find.text('Vídeo'), findsOneWidget);
+  });
+
+  testWidgets('video recording attaches video media to draft', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+
+    final form = tester.widget<OccurrenceDraftFormScreen>(
+      find.byType(OccurrenceDraftFormScreen),
+    );
+    final occurrenceId = form.occurrenceId;
+
+    await tester.tap(find.byKey(const Key('add_media_button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Vídeo'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+
+    final media = await occurrenceRepo.getMedia(occurrenceId);
+    expect(media, hasLength(2));
+    expect(media.last.mediaType, 'video');
+    expect(media.last.mimeType, 'video/mp4');
+    expect(media.last.durationSeconds, greaterThanOrEqualTo(0));
+  });
 }
