@@ -18,6 +18,7 @@ import 'package:sentinel_app/data/services/occurrence_sync_coordinator.dart';
 import 'package:sentinel_app/presentation/capture/capture_home_screen.dart';
 import 'package:sentinel_app/presentation/capture/in_app_capture_screen.dart';
 import 'package:sentinel_app/presentation/capture/occurrence_draft_form_screen.dart';
+import 'package:sentinel_app/presentation/home/home_screen.dart';
 
 import '../../support/counting_occurrence_sync_foreground_runner.dart';
 
@@ -216,8 +217,6 @@ void main() {
     expect(find.byType(CaptureHomeScreen), findsOneWidget);
     expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
     expect(find.byKey(const Key('draft_media_cart')), findsNothing);
-    expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
-    expect(find.text('1 pendente(s)'), findsOneWidget);
 
     final pending = await queueRepo.getPending();
     expect(pending.occurrences, hasLength(1));
@@ -231,6 +230,46 @@ void main() {
 
     final media = await occurrenceRepo.getMedia(occurrence.id);
     expect(media, hasLength(2));
+  });
+
+  testWidgets('confirm from FAB returns to home list with pending badge',
+      (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: HomeScreen()),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('add_occurrence_fab')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CaptureHomeScreen), findsOneWidget);
+
+    await captureAndStayOnPreview(tester);
+    await finishDraftAndOpenForm(tester);
+
+    await tester.tap(find.byKey(const Key('category_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Evento').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('observable_field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Político').last);
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('note_field')), 'Via FAB');
+
+    await tester.tap(find.byKey(const Key('confirm_button')));
+    await tester.pumpAndSettle();
+    await tester.pump();
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(CaptureHomeScreen), findsNothing);
+    expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
+    expect(find.text('1 pendente(s)'), findsOneWidget);
+    expect(find.byKey(const Key('occurrences_list')), findsOneWidget);
+    expect(find.text('Via FAB'), findsOneWidget);
+    expect(find.text('Pendente'), findsOneWidget);
   });
 
   testWidgets('remove one then finish confirm enqueues remaining media',
@@ -303,12 +342,9 @@ void main() {
 
   testWidgets('sync now button is disabled when queue is empty', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: CaptureHomeScreen(captureService: captureService),
-      ),
+      const MaterialApp(home: HomeScreen()),
     );
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     final button = tester.widget<FilledButton>(
       find.byKey(const Key('sync_now_button')),
@@ -328,13 +364,10 @@ void main() {
     fakeGateway.confirmedIds = ['pending-home'];
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: CaptureHomeScreen(captureService: captureService),
-      ),
+      const MaterialApp(home: HomeScreen()),
     );
 
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
     expect(find.text('1 pendente(s)'), findsOneWidget);
@@ -363,15 +396,11 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: CaptureHomeScreen(
-          captureService: captureService,
-          syncForegroundRunner: countingRunner,
-        ),
+        home: HomeScreen(syncForegroundRunner: countingRunner),
       ),
     );
 
-    await tester.pump();
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
 

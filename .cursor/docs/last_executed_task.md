@@ -1,8 +1,8 @@
-# Última tarefa executada — ENI-60: câmera "pega-tudo"
+# Última tarefa executada — ENI-57: home com 2 abas + FAB de captura
 
-**Status: implementado** — verificação manual G56/G86 pendente
+**Status: implementado** — verificação manual G86 pendente
 
-**Linear:** ENI-60 — capturas em sequência sem sair do preview
+**Linear:** ENI-57 — nova home com abas Ocorrências / Tasks e captura via FAB
 
 Data: 2026-07-03
 
@@ -10,29 +10,28 @@ Data: 2026-07-03
 
 ## Escopo
 
-Inverter o fluxo pós-captura: a câmera permanece no preview entre foto/vídeo; o form (categoria/observável/nota) só abre em **Concluir**. Multi-mídia (ENI-56) e pipeline de hash/GPS/mime/sort_order (ENI-50/56) intactos. Limite 5 min + wakelock por clipe (ENI-52) preservados.
+Navegação/UI apenas. Home deixa de ser a câmera: abas + FAB abrem o fluxo pega-tudo (ENI-60). Badge e “Sincronizar agora” (ENI-49) migram para a aba Ocorrências.
 
-**Fora de escopo:** abas/home (ENI-57), zoom (ENI-58), loading (ENI-59).
+**Fora de escopo:** Tasks de verdade (E7/inbox), zoom (ENI-58), loading (ENI-59), contrato/persistência/auth.
 
 ---
 
 ## Fluxo
 
 ```
-Preview → capturar (foto ou vídeo) → anexa ao rascunho local_saved → permanece no preview
-       → carrinho (contador + thumbnail da última) → revisar/remover
-       → Concluir → form → Confirmar → fila (sync manual, ENI-49)
-Sair sem concluir = rascunho local fora do sync (ENI-44)
+Login → bootstrap → Home (aba Ocorrências)
+  → FAB "Adicionar ocorrência" → captura pega-tudo (ENI-60)
+       → Concluir → form → Confirmar → pop para lista (ocorrência aparece)
+  → Aba Tasks → placeholder "Em breve" (sem API)
 ```
 
-| Ação | Comportamento |
-|------|----------------|
-| 1ª captura | `createDraftFromCapture` — cria ocorrência draft + mídia `sort_order=0` |
-| N-ésima captura | `attachCaptureToDraft` — mesma occurrence, `sort_order` incremental |
-| Toque no carrinho | Bottom sheet com lista; remove via `removeMediaFromDraft` |
-| Concluir | Abre `OccurrenceDraftFormScreen` |
-| Confirmar no form | `confirmDraft` → `pending` na fila; limpa rascunho ativo no preview |
-| Voltar do form sem confirmar | Rascunho ativo permanece; pode capturar mais |
+| Elemento | Comportamento |
+|----------|----------------|
+| Aba Ocorrências | Lista local Drift (draft + pending + synced); badge pendentes; botão sync (desabilitado com fila vazia) |
+| Rascunho na lista | Rótulo "Não confirmada"; **não** entra no badge de pendentes (ENI-44) |
+| Pendente / sincronizada | "Pendente" / "Sincronizada" (e Falha / Sincronizando conforme `SyncState`) |
+| Aba Tasks | Placeholder "Em breve" — sem popular, sem chamar API |
+| FAB | Abre `CaptureHomeScreen`; ao confirmar, volta à lista e recarrega |
 
 ---
 
@@ -40,61 +39,64 @@ Sair sem concluir = rascunho local fora do sync (ENI-44)
 
 | Arquivo | Mudança |
 |---------|---------|
-| `lib/presentation/capture/capture_home_screen.dart` | Rascunho ativo (`_activeDraftId` + `_draftMedia`); não navega ao capturar; carrinho + Concluir em overlay; sheet de revisão/remoção |
-| `lib/presentation/capture/in_app_capture_controls.dart` | `onCaptureComplete` assíncrono; `onTap` sempre ativo (avalia `_canPress` no toque); wakelock `disable` fire-and-forget (evita shutter morto após 1º vídeo) |
-| `lib/presentation/capture/in_app_capture_screen.dart` | Callback assíncrono compatível |
-| `lib/data/services/capture_occurrence_service.dart` | `isDraft(occurrenceId)` — detecta se form confirmou |
-| `lib/data/fakes/fake_camera_source.dart` | Paths únicos por clipe de vídeo (2º, 3º…) |
-| `test/presentation/capture/capture_flow_test.dart` | Fluxo pega-tudo + regressões atualizadas |
-
-### Correção colateral (shutter após 1º vídeo)
-
-`await WakelockPlus.disable()` no `finally` do stop não completava de forma confiável em testes (e podia atrasar o release de `_busy` no device). O `disable` passou a ser fire-and-forget, como o `enable`. Além disso, o shutter não usa mais `onTap: _canPress ? handler : null` (ficava `null` se o rebuild com `_busy=false` fosse perdido).
+| `lib/presentation/home/home_screen.dart` | Shell: BottomNavigationBar (Ocorrências / Tasks), FAB, logout, aviso de catálogo |
+| `lib/presentation/home/occurrences_tab.dart` | Lista local + badge/botão sync migrados da capture-home |
+| `lib/presentation/home/tasks_tab.dart` | Placeholder "Em breve" |
+| `lib/presentation/capture/capture_home_screen.dart` | Só fluxo de captura; sem badge/sync/logout; pop ao confirmar (se `canPop`) |
+| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | Destino pós-bootstrap: `HomeScreen` (não câmera) |
+| `lib/data/repositories/occurrence_repository.dart` | `listAll()` — ocorrências locais por `createdLocalAt` desc |
+| `test/presentation/home/home_screen_test.dart` | Abas, FAB, lista/rótulos, badge sem contar draft |
+| `test/presentation/capture/capture_flow_test.dart` | Sync na home; FAB → captura → lista |
+| `test/presentation/bootstrap/app_bootstrap_screen_test.dart` | Bootstrap cai na home, não na câmera |
 
 ---
 
-## Testes (`flutter test` — 127 passed)
+## Testes (`flutter test` — 134 passed)
 
 ```
-00:06 +127: All tests passed!
+00:08 +134: All tests passed!
 ```
 
-Cenários ENI-60:
+Cenários ENI-57:
 
-- capturar 2 vídeos + 1 foto sem sair do preview → rascunho com 3 mídias, `sort_order` `[0,1,2]`
-- remover 1 mídia do carrinho antes de concluir → rascunho com 2
-- concluir → form → confirmar → mídias na fila (mesma occurrence)
-- vídeo único anexa sem abrir form
-- regressões: sync manual, add/remove no form, modo foto/vídeo
+- abas: Ocorrências (lista/sync) e Tasks ("Em breve")
+- FAB abre captura pega-tudo
+- confirmar via FAB volta à lista com badge e item "Pendente"
+- rascunho na lista como "Não confirmada", fora do badge (ENI-44)
+- botão sync desabilitado com fila vazia; manual sync limpa badge
+- bootstrap → `home_screen`, sem `capture_button`
 
 ---
 
 ## Arquivos tocados
 
+**Novos:**
+
+- `lib/presentation/home/home_screen.dart`
+- `lib/presentation/home/occurrences_tab.dart`
+- `lib/presentation/home/tasks_tab.dart`
+- `test/presentation/home/home_screen_test.dart`
+
 **Alterados:**
 
 - `lib/presentation/capture/capture_home_screen.dart`
-- `lib/presentation/capture/in_app_capture_controls.dart`
-- `lib/presentation/capture/in_app_capture_screen.dart`
-- `lib/data/services/capture_occurrence_service.dart`
-- `lib/data/fakes/fake_camera_source.dart`
+- `lib/presentation/bootstrap/app_bootstrap_screen.dart`
+- `lib/data/repositories/occurrence_repository.dart`
 - `test/presentation/capture/capture_flow_test.dart`
+- `test/presentation/bootstrap/app_bootstrap_screen_test.dart`
 - `.cursor/docs/last_executed_task.md`
 
 ---
 
-## Verificação manual G56 / G86 (aceite — pendente)
+## Verificação manual G86 (aceite — pendente)
 
-1. Gravar vídeo → volta ao preview (não vai pro form)
-2. Gravar 2º vídeo → tirar 1 foto
-3. Carrinho mostra **3** (thumbnail da última)
-4. Toque no carrinho → remover 1 mídia → contador **2**
-5. **Concluir** → form → **Confirmar**
-6. Postgres: N linhas `occurrence_media`, mesma `occurrence_id`; Storage: N objetos
-7. Sair sem concluir: rascunho local, fora da fila de sync
+1. Login → cai na home (aba Ocorrências, **não** na câmera)
+2. FAB → captura pega-tudo → concluir → volta pra lista, ocorrência aparece
+3. Aba Tasks → "Em breve"
+4. Badge de pendentes + botão sync na aba Ocorrências; botão desabilitado com fila vazia
 
 ---
 
 ## Auditoria
 
-**Não escalada.** UI/fluxo sobre pipeline ENI-50/56 já pronto. Sem alteração de modelo Drift, serializer ou fila de sync — apenas `isDraft` (leitura de status) e apresentação do rascunho multi-mídia no preview. Report + testes + device bastam.
+**Não escalada.** Navegação/UI; não toca contrato, persistência de sync nem auth. Report + testes + device bastam.

@@ -4,41 +4,26 @@ import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
 import '../../core/capture/video_recording_policy.dart';
-import '../../core/sync/occurrence_sync_coordinator_state.dart';
-import '../../core/sync/sync_foreground_notification_text.dart';
 import '../../data/device/camera_permission_denied_exception.dart';
 import '../../data/device/device_camera_source.dart';
 import '../../data/local/app_database.dart';
 import '../../data/services/capture_occurrence_service.dart';
-import '../../data/services/occurrence_sync_foreground_runner.dart';
-import '../../data/services/occurrence_sync_coordinator.dart';
-import '../../domain/gateways/auth_gateway.dart';
 import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
 import 'in_app_camera_preview.dart';
 import 'in_app_capture_controls.dart';
 import 'occurrence_draft_form_screen.dart';
 
-/// Home capture-first: câmera in-app (device) ou placeholder (testes/fake).
+/// Fluxo de captura pega-tudo (ENI-60), aberto pelo FAB da home (ENI-57).
 ///
 /// ENI-60 — captura em sequência sem sair do preview; form só em "Concluir".
 class CaptureHomeScreen extends StatefulWidget {
   const CaptureHomeScreen({
     super.key,
     this.captureService,
-    this.authGateway,
-    this.syncCoordinator,
-    this.syncForegroundRunner,
-    this.catalogSyncWarning,
-    this.onRetryCatalogSync,
   });
 
   final CaptureOccurrenceService? captureService;
-  final AuthGateway? authGateway;
-  final OccurrenceSyncCoordinator? syncCoordinator;
-  final OccurrenceSyncForegroundRunner? syncForegroundRunner;
-  final String? catalogSyncWarning;
-  final VoidCallback? onRetryCatalogSync;
 
   @override
   State<CaptureHomeScreen> createState() => _CaptureHomeScreenState();
@@ -74,18 +59,6 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
   }
 
   bool get _hasDraftMedia => _draftMedia.isNotEmpty;
-
-  AuthGateway get _auth => widget.authGateway ?? getIt<AuthGateway>();
-
-  OccurrenceSyncCoordinator get _syncCoordinator =>
-      widget.syncCoordinator ?? getIt<OccurrenceSyncCoordinator>();
-
-  OccurrenceSyncForegroundRunner get _syncForegroundRunner =>
-      widget.syncForegroundRunner ?? getIt<OccurrenceSyncForegroundRunner>();
-
-  Future<void> _onSyncNow() async {
-    await _syncForegroundRunner.runIfPending();
-  }
 
   Future<void> _reloadDraftMedia() async {
     final draftId = _activeDraftId;
@@ -181,6 +154,10 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
     if (!mounted) return;
     if (!stillDraft) {
       _clearActiveDraft();
+      // Volta para a lista da home quando aberta pelo FAB.
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
     } else {
       await _reloadDraftMedia();
     }
@@ -232,169 +209,26 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
     await _reloadDraftMedia();
   }
 
-  Future<void> _onLogout() async {
-    await _auth.signOut();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: widget.catalogSyncWarning != null
-          ? AppBar(
-              backgroundColor: Colors.orange.shade900,
-              title: const Text('Catálogo desatualizado'),
-              actions: [
-                if (widget.onRetryCatalogSync != null)
-                  IconButton(
-                    key: const Key('retry_catalog_sync'),
-                    icon: const Icon(Icons.refresh),
-                    onPressed: widget.onRetryCatalogSync,
-                  ),
-                IconButton(
-                  key: const Key('logout_button'),
-                  icon: const Icon(Icons.logout),
-                  onPressed: _onLogout,
-                ),
-              ],
-            )
-          : AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              actions: [
-                IconButton(
-                  key: const Key('logout_button'),
-                  icon: const Icon(Icons.logout, color: Colors.white70),
-                  onPressed: _onLogout,
-                ),
-              ],
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white70),
+      ),
       body: SafeArea(
         child: Stack(
           fit: StackFit.expand,
           children: [
             _buildCameraLayer(),
-            if (widget.catalogSyncWarning != null)
-              Positioned(
-                top: 0,
-                left: 16,
-                right: 16,
-                child: MaterialBanner(
-                  content: Text(widget.catalogSyncWarning!),
-                  actions: [
-                    if (widget.onRetryCatalogSync != null)
-                      TextButton(
-                        onPressed: widget.onRetryCatalogSync,
-                        child: const Text('Tentar novamente'),
-                      ),
-                  ],
-                ),
-              ),
             Positioned(
               left: 0,
               right: 0,
               bottom: 32,
               child: Column(
                 children: [
-                  ValueListenableBuilder<OccurrenceSyncCoordinatorState>(
-                    valueListenable: _syncCoordinator.state,
-                    builder: (context, syncState, _) {
-                      final progressLabel =
-                          syncState.syncProgressCurrent != null &&
-                                  syncState.syncProgressTotal != null
-                              ? SyncForegroundNotificationText.syncingProgress(
-                                  current: syncState.syncProgressCurrent!,
-                                  total: syncState.syncProgressTotal!,
-                                )
-                              : null;
-
-                      return Column(
-                        children: [
-                          if (syncState.pendingCount > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Container(
-                                key: const Key('pending_sync_badge'),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange.shade700,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  '${syncState.pendingCount} pendente(s)',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                ),
-                              ),
-                            ),
-                          if (progressLabel != null)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      key: Key('sync_progress_indicator'),
-                                      strokeWidth: 2,
-                                      color: Colors.white70,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    key: const Key('sync_progress_label'),
-                                    progressLabel,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(color: Colors.white70),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (syncState.lastResult != null &&
-                              !syncState.lastResult!.success)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                syncState.lastResult!.errorMessage ??
-                                    'Falha na sincronização',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: Colors.redAccent),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: FilledButton.tonal(
-                              key: const Key('sync_now_button'),
-                              onPressed: syncState.isSyncInProgress ||
-                                      syncState.pendingCount == 0
-                                  ? null
-                                  : _onSyncNow,
-                              child: Text(
-                                syncState.isSyncInProgress
-                                    ? (progressLabel ?? 'Sincronizando...')
-                                    : 'Sincronizar agora',
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
                   if (_cameraSource != null)
                     InAppCaptureControls(
                       cameraSource: _cameraSource!,

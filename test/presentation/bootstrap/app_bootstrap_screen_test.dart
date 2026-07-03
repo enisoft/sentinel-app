@@ -90,7 +90,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.isSignedIn, isTrue);
-    expect(find.byKey(const Key('capture_button')), findsOneWidget);
+    expect(find.byKey(const Key('home_screen')), findsOneWidget);
+    expect(find.byKey(const Key('add_occurrence_fab')), findsOneWidget);
+    expect(find.byKey(const Key('capture_button')), findsNothing);
     expect(find.text('Sincronizando...'), findsNothing);
     expect(find.byKey(const Key('login_submit')), findsNothing);
   });
@@ -202,12 +204,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(countingRunner.runIfPendingCallCount, 0);
-    expect(find.byKey(const Key('capture_button')), findsOneWidget);
+    expect(find.byKey(const Key('home_screen')), findsOneWidget);
+    expect(find.byKey(const Key('add_occurrence_fab')), findsOneWidget);
+    expect(find.byKey(const Key('capture_button')), findsNothing);
     expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
     expect(find.text('1 pendente(s)'), findsOneWidget);
   });
 
-  testWidgets('successful bootstrap reaches capture home', (tester) async {
+  testWidgets('successful bootstrap reaches home occurrences tab', (tester) async {
     await pumpAuthGate(
       tester,
       MockClient((request) async {
@@ -245,7 +249,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.isSignedIn, isTrue);
-    expect(find.byKey(const Key('capture_button')), findsOneWidget);
+    expect(find.byKey(const Key('home_screen')), findsOneWidget);
+    expect(find.byKey(const Key('add_occurrence_fab')), findsOneWidget);
+    expect(find.byKey(const Key('capture_button')), findsNothing);
     expect(find.text('Sincronizando...'), findsNothing);
   });
 }

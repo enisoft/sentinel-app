@@ -5,7 +5,7 @@ import '../../core/auth/auth_messages.dart';
 import '../../data/remote/api_exception.dart';
 import '../../data/services/bootstrap_service.dart';
 import '../../domain/gateways/auth_gateway.dart';
-import '../capture/capture_home_screen.dart';
+import '../home/home_screen.dart';
 
 /// Executa GET /me + sync de catálogo no startup.
 class AppBootstrapScreen extends StatefulWidget {
@@ -105,7 +105,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       );
     }
 
-    return CaptureHomeScreen(
+    return HomeScreen(
       catalogSyncWarning: _result?.catalogSynced == false
           ? _result?.catalogError ?? 'Falha ao sincronizar catálogo.'
           : null,

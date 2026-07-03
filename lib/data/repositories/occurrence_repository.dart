@@ -99,6 +99,13 @@ class OccurrenceRepository {
   Future<Occurrence?> getById(String id) =>
       (_db.select(_db.occurrences)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  /// Todas as ocorrências locais (rascunhos, enfileiradas e sincronizadas).
+  Future<List<Occurrence>> listAll() {
+    return (_db.select(_db.occurrences)
+          ..orderBy([(t) => OrderingTerm.desc(t.createdLocalAt)]))
+        .get();
+  }
+
   Future<List<OccurrenceMediaData>> getMedia(String occurrenceId) async {
     return (_db.select(_db.occurrenceMedia)
           ..where((t) => t.occurrenceId.equals(occurrenceId))
