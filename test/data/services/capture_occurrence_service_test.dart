@@ -142,6 +142,23 @@ void main() {
       expect(updated!.description, 'Registro de áudio');
     });
 
+    test('capture without GPS degrades gracefully with null coords', () async {
+      location.returnNull = true;
+
+      final draft = await captureService.captureDraft();
+
+      expect(draft.gpsAvailable, isFalse);
+      expect(draft.latitude, isNull);
+      expect(draft.longitude, isNull);
+      expect(draft.accuracy, isNull);
+
+      final occurrence = await occurrenceRepo.getById(draft.occurrence.id);
+      expect(occurrence!.latitude, isNull);
+      expect(occurrence.longitude, isNull);
+      expect(draft.media.localPath, isNotEmpty);
+      expect(draft.contentHash, isNotEmpty);
+    });
+
     test('capture is not blocked by offline fakes (no network dependency)', () async {
       final draft = await captureService.captureDraft();
 

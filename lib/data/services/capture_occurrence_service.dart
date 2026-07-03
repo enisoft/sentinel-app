@@ -35,8 +35,8 @@ class CaptureOccurrenceService {
       status: OccurrenceLifecycleStatus.draft,
       priority: 'medium',
       occurredAt: capture.capturedAt,
-      latitude: position.latitude,
-      longitude: position.longitude,
+      latitude: position?.latitude,
+      longitude: position?.longitude,
       createdAt: capture.capturedAt,
     );
 
@@ -54,9 +54,10 @@ class CaptureOccurrenceService {
       occurrence: occurrence,
       media: media,
       contentHash: contentHash,
-      latitude: position.latitude,
-      longitude: position.longitude,
-      accuracy: position.accuracy,
+      latitude: position?.latitude,
+      longitude: position?.longitude,
+      accuracy: position?.accuracy,
+      gpsAvailable: position != null,
     );
   }
 
@@ -108,12 +109,14 @@ class CaptureDraftResult {
     required this.latitude,
     required this.longitude,
     required this.accuracy,
+    required this.gpsAvailable,
   });
 
   final Occurrence occurrence;
   final OccurrenceMediaData media;
   final String contentHash;
-  final double latitude;
-  final double longitude;
-  final double accuracy;
+  final double? latitude;
+  final double? longitude;
+  final double? accuracy;
+  final bool gpsAvailable;
 }

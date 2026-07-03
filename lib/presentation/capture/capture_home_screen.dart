@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import '../../app/di.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
 import '../../core/sync/sync_foreground_notification_text.dart';
+import '../../data/device/camera_permission_denied_exception.dart';
+import '../../data/device/device_camera_source.dart';
 import '../../data/services/capture_occurrence_service.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
+import '../../domain/services/camera_source.dart';
+import 'in_app_camera_preview.dart';
 import 'occurrence_draft_form_screen.dart';
 
-/// Home capture-first: placeholder de câmera que dispara captura via fake/device.
+/// Home capture-first: câmera in-app (device) ou placeholder (testes/fake).
 class CaptureHomeScreen extends StatefulWidget {
   const CaptureHomeScreen({
     super.key,
@@ -34,9 +38,32 @@ class CaptureHomeScreen extends StatefulWidget {
 
 class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
   bool _capturing = false;
+  bool _cameraPermissionDenied = false;
+  bool _cameraReady = false;
 
   CaptureOccurrenceService get _captureService =>
       widget.captureService ?? getIt<CaptureOccurrenceService>();
+
+  CameraSource? get _cameraSource {
+    try {
+      return getIt<CameraSource>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  DeviceCameraSource? get _deviceCameraSource {
+    final source = _cameraSource;
+    return source is DeviceCameraSource ? source : null;
+  }
+
+  bool get _canCapture {
+    if (_capturing) return false;
+    if (_deviceCameraSource != null) {
+      return _cameraReady && !_cameraPermissionDenied;
+    }
+    return true;
+  }
 
   AuthGateway get _auth => widget.authGateway ?? getIt<AuthGateway>();
 
@@ -51,7 +78,7 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
   }
 
   Future<void> _onCapturePressed() async {
-    if (_capturing) return;
+    if (!_canCapture) return;
     setState(() => _capturing = true);
 
     try {
@@ -65,6 +92,11 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
             captureService: _captureService,
           ),
         ),
+      );
+    } on CameraPermissionDeniedException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
       );
     } catch (error) {
       if (!mounted) return;
@@ -119,9 +151,7 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            const Center(
-              child: Icon(Icons.photo_camera_outlined, size: 96, color: Colors.white24),
-            ),
+            _buildCameraLayer(),
             if (widget.catalogSyncWarning != null)
               Positioned(
                 top: 0,
@@ -253,14 +283,14 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
                     button: true,
                     child: GestureDetector(
                       key: const Key('capture_button'),
-                      onTap: _capturing ? null : _onCapturePressed,
+                      onTap: _canCapture ? _onCapturePressed : null,
                       child: Container(
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.white, width: 4),
-                          color: _capturing ? Colors.white38 : Colors.white,
+                          color: _canCapture ? Colors.white : Colors.white38,
                         ),
                       ),
                     ),
@@ -271,6 +301,25 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCameraLayer() {
+    final deviceSource = _deviceCameraSource;
+    if (deviceSource != null) {
+      return InAppCameraPreview(
+        cameraSource: deviceSource,
+        onPermissionDenied: (denied) {
+          if (mounted) setState(() => _cameraPermissionDenied = denied);
+        },
+        onReadyChanged: (ready) {
+          if (mounted) setState(() => _cameraReady = ready);
+        },
+      );
+    }
+
+    return const Center(
+      child: Icon(Icons.photo_camera_outlined, size: 96, color: Colors.white24),
     );
   }
 }

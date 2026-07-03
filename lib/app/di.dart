@@ -6,8 +6,10 @@ import '../data/auth/secure_gotrue_async_storage.dart';
 import '../data/auth/secure_key_value_store.dart';
 import '../data/auth/secure_supabase_local_storage.dart';
 import '../data/auth/supabase_session_keys.dart';
+import '../data/device/crypto_hash_service.dart';
+import '../data/device/device_camera_source.dart';
+import '../data/device/geolocator_location_source.dart';
 import '../data/fakes/fake_camera_source.dart';
-import '../data/fakes/fake_device_camera_source.dart';
 import '../data/fakes/fake_hash_service.dart';
 import '../data/fakes/fake_location_source.dart';
 import '../data/gateways/supabase_auth_gateway.dart';
@@ -63,7 +65,7 @@ Future<void> configureDependencies() async {
 
   final db = await AppDatabase.openDefault();
   await _registerCore(db, config);
-  _registerCaptureFakes();
+  _registerCaptureProduction();
 }
 
 Future<void> configureDependenciesForTesting(
@@ -211,11 +213,13 @@ Future<void> _registerCore(
   }
 }
 
-void _registerCaptureFakes() {
+void _registerCaptureProduction() {
+  final cameraSource = DeviceCameraSource();
+  getIt.registerLazySingleton<DeviceCameraSource>(() => cameraSource);
   _registerCaptureServices(
-    cameraSource: FakeDeviceCameraSource(),
-    locationSource: FakeLocationSource(),
-    hashService: FakeHashService(),
+    cameraSource: cameraSource,
+    locationSource: GeolocatorLocationSource(),
+    hashService: CryptoHashService(),
   );
 }
 
