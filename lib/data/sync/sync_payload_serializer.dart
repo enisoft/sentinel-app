@@ -51,6 +51,7 @@ class SyncPayloadSerializer {
       'size_bytes': media.sizeBytes,
       'sort_order': media.sortOrder,
       'duration_seconds': media.durationSeconds,
+      if (media.contentHash != null) 'content_hash': media.contentHash,
     };
   }
 

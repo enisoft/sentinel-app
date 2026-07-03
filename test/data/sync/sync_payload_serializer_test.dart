@@ -129,7 +129,62 @@ void main() {
         expect(m.containsKey('local_path'), isFalse);
         expect(m.containsKey('remote_path'), isFalse);
         expect(m.containsKey('path'), isTrue);
+        expect(m.containsKey('content_hash'), isFalse);
       }
+    });
+
+    test('includes content_hash when media has hash', () async {
+      const hash =
+          'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+
+      final occurrence = await occurrenceRepo.createOccurrence(
+        id: '550e8400-e29b-41d4-a716-446655440001',
+        observableId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        categoryId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+        title: 'Teste hash',
+        description: 'Mídia com content_hash',
+        status: 'pending',
+        priority: 'normal',
+        location: null,
+        latitude: null,
+        longitude: null,
+        occurredAt: DateTime.utc(2026, 7, 2, 12, 0),
+        createdAt: DateTime.utc(2026, 7, 2, 12, 0),
+        createdLocalAt: DateTime.utc(2026, 7, 2, 12, 0),
+      );
+
+      await occurrenceRepo.attachMedia(
+        id: 'media-with-hash',
+        occurrenceId: occurrence.id,
+        mediaType: 'image',
+        localPath: '/tmp/foto.jpg',
+        remotePath: 'occurrences/${occurrence.id}/foto.jpg',
+        mimeType: 'image/jpeg',
+        originalName: 'foto.jpg',
+        sizeBytes: 1024,
+        contentHash: hash,
+      );
+
+      final media = await occurrenceRepo.getMedia(occurrence.id);
+      final payload = serializer.serializeOccurrencesSyncPayload(
+        items: [(occurrence: occurrence, media: media)],
+      );
+
+      final mediaJson = ((payload['occurrences'] as List).single
+          as Map<String, dynamic>)['media'] as List<dynamic>;
+      expect(mediaJson.single, {
+        'id': 'media-with-hash',
+        'media_type': 'image',
+        'path': 'occurrences/${occurrence.id}/foto.jpg',
+        'mime_type': 'image/jpeg',
+        'original_name': 'foto.jpg',
+        'size_bytes': 1024,
+        'sort_order': 0,
+        'duration_seconds': null,
+        'content_hash': hash,
+      });
+      expect(hash, hasLength(64));
+      expect(hash, matches(RegExp(r'^[0-9a-f]{64}$')));
     });
   });
 
