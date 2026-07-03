@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../domain/models/capture_result.dart';
+import '../../data/local/app_database.dart';
 import '../../data/repositories/catalog_repository.dart';
 import '../../data/services/capture_occurrence_service.dart';
+import 'in_app_capture_screen.dart';
 
 /// Form mínimo pós-captura — nunca bloqueia o disparo anterior.
 class OccurrenceDraftFormScreen extends StatefulWidget {
@@ -25,8 +30,10 @@ class OccurrenceDraftFormScreen extends StatefulWidget {
 class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
   final _noteController = TextEditingController();
   bool _confirming = false;
+  bool _addingMedia = false;
   String? _categoryId;
   String? _observableId;
+  List<OccurrenceMediaData> _media = [];
   late final Future<List<CatalogItem>> _categoriesFuture;
   late final Future<List<CatalogItem>> _observablesFuture;
 
@@ -41,6 +48,56 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
     super.initState();
     _categoriesFuture = _catalog.getCategories();
     _observablesFuture = _catalog.getObservables();
+    _loadMedia();
+  }
+
+  Future<void> _loadMedia() async {
+    final media = await _captureService.listDraftMedia(widget.occurrenceId);
+    if (mounted) setState(() => _media = media);
+  }
+
+  Future<void> _onAddMedia() async {
+    if (_addingMedia) return;
+    setState(() => _addingMedia = true);
+
+    try {
+      final capture = await Navigator.of(context).push<CaptureResult>(
+        MaterialPageRoute(
+          builder: (_) => const InAppCaptureScreen(),
+        ),
+      );
+      if (capture == null || !mounted) return;
+
+      await _captureService.attachCaptureToDraft(
+        occurrenceId: widget.occurrenceId,
+        capture: capture,
+      );
+      await _loadMedia();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Falha ao adicionar mídia: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _addingMedia = false);
+    }
+  }
+
+  Future<void> _onRemoveMedia(String mediaId) async {
+    try {
+      await _captureService.removeMediaFromDraft(
+        occurrenceId: widget.occurrenceId,
+        mediaId: mediaId,
+      );
+      await _loadMedia();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Falha ao remover mídia: $error')),
+        );
+      }
+    }
   }
 
   @override
@@ -97,6 +154,13 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+            _DraftMediaSection(
+              media: _media,
+              addingMedia: _addingMedia,
+              onAddMedia: _onAddMedia,
+              onRemoveMedia: _onRemoveMedia,
+            ),
+            const SizedBox(height: 12),
             FutureBuilder<List<CatalogItem>>(
               future: _categoriesFuture,
               builder: (context, snapshot) {
@@ -187,6 +251,129 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
           ],
         ),
       ),
+      ),
+    );
+  }
+}
+
+class _DraftMediaSection extends StatelessWidget {
+  const _DraftMediaSection({
+    required this.media,
+    required this.addingMedia,
+    required this.onAddMedia,
+    required this.onRemoveMedia,
+  });
+
+  final List<OccurrenceMediaData> media;
+  final bool addingMedia;
+  final VoidCallback onAddMedia;
+  final ValueChanged<String> onRemoveMedia;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Mídias anexadas (${media.length})',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 8),
+        if (media.isNotEmpty)
+          SizedBox(
+            height: 96,
+            child: ListView.separated(
+              key: const Key('media_grid'),
+              scrollDirection: Axis.horizontal,
+              itemCount: media.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final item = media[index];
+                return _DraftMediaTile(
+                  media: item,
+                  onRemove: () => onRemoveMedia(item.id),
+                );
+              },
+            ),
+          ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          key: const Key('add_media_button'),
+          onPressed: addingMedia ? null : onAddMedia,
+          icon: addingMedia
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.add_a_photo_outlined),
+          label: Text(addingMedia ? 'Capturando...' : 'Adicionar mídia'),
+        ),
+      ],
+    );
+  }
+}
+
+class _DraftMediaTile extends StatelessWidget {
+  const _DraftMediaTile({
+    required this.media,
+    required this.onRemove,
+  });
+
+  final OccurrenceMediaData media;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 88,
+            height: 88,
+            child: _buildThumbnail(),
+          ),
+        ),
+        Positioned(
+          top: -8,
+          right: -8,
+          child: Material(
+            color: Colors.black54,
+            shape: const CircleBorder(),
+            child: IconButton(
+              key: Key('remove_media_${media.id}'),
+              icon: const Icon(Icons.close, size: 18, color: Colors.white),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              onPressed: onRemove,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildThumbnail() {
+    if (media.mediaType == 'image') {
+      final file = File(media.localPath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _placeholder(),
+        );
+      }
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() {
+    return ColoredBox(
+      color: Colors.grey.shade300,
+      child: const Center(
+        child: Icon(Icons.image_outlined, color: Colors.grey),
       ),
     );
   }

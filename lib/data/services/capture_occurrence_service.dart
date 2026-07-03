@@ -1,5 +1,6 @@
 import '../../core/capture/occurrence_confirm_text.dart';
 import '../../core/capture/occurrence_lifecycle_status.dart';
+import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
 import '../../domain/services/hash_service.dart';
 import '../../domain/services/location_source.dart';
@@ -48,6 +49,7 @@ class CaptureOccurrenceService {
       sizeBytes: capture.sizeBytes,
       durationSeconds: capture.durationSeconds,
       contentHash: contentHash,
+      sortOrder: 0,
     );
 
     return CaptureDraftResult(
@@ -59,6 +61,62 @@ class CaptureOccurrenceService {
       accuracy: position?.accuracy,
       gpsAvailable: position != null,
     );
+  }
+
+  /// Lista mídias anexadas ao rascunho (ordenadas por [sort_order]).
+  Future<List<OccurrenceMediaData>> listDraftMedia(String occurrenceId) {
+    return _occurrenceRepository.getMedia(occurrenceId);
+  }
+
+  /// Captura mídia adicional e anexa ao mesmo rascunho (sem UI — preferir preview + [attachCaptureToDraft]).
+  Future<OccurrenceMediaData> addMediaToDraft(String occurrenceId) async {
+    final capture = await _cameraSource.capture();
+    return attachCaptureToDraft(
+      occurrenceId: occurrenceId,
+      capture: capture,
+    );
+  }
+
+  /// Anexa captura já feita (após preview) ao rascunho.
+  Future<OccurrenceMediaData> attachCaptureToDraft({
+    required String occurrenceId,
+    required CaptureResult capture,
+  }) async {
+    await _requireDraft(occurrenceId);
+
+    final contentHash = await _hashService.hashFile(capture.localPath);
+    final sortOrder =
+        await _occurrenceRepository.nextMediaSortOrder(occurrenceId);
+
+    return _occurrenceRepository.attachMedia(
+      occurrenceId: occurrenceId,
+      mediaType: capture.mediaType,
+      localPath: capture.localPath,
+      mimeType: capture.mimeType,
+      sizeBytes: capture.sizeBytes,
+      durationSeconds: capture.durationSeconds,
+      contentHash: contentHash,
+      sortOrder: sortOrder,
+    );
+  }
+
+  /// Remove mídia do rascunho antes da confirmação.
+  Future<void> removeMediaFromDraft({
+    required String occurrenceId,
+    required String mediaId,
+  }) async {
+    await _requireDraft(occurrenceId);
+    await _occurrenceRepository.removeMedia(mediaId);
+  }
+
+  Future<void> _requireDraft(String occurrenceId) async {
+    final occurrence = await _occurrenceRepository.getById(occurrenceId);
+    if (occurrence == null) {
+      throw StateError('Ocorrência não encontrada: $occurrenceId');
+    }
+    if (occurrence.status != OccurrenceLifecycleStatus.draft) {
+      throw StateError('Só rascunhos aceitam alteração de mídia.');
+    }
   }
 
   /// Atualiza campos do form mínimo sem bloquear a captura já feita.

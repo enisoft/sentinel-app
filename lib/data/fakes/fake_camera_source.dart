@@ -22,8 +22,10 @@ class FakeCameraSource implements CameraSource {
   @override
   Future<CaptureResult> capture() async {
     captureCallCount++;
+    final path =
+        captureCallCount == 1 ? nextPath : '$nextPath-$captureCallCount';
     return CaptureResult(
-      localPath: nextPath,
+      localPath: path,
       mediaType: nextMediaType,
       mimeType: nextMimeType,
       capturedAt: _nextCapturedAt,

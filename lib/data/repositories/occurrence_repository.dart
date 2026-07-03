@@ -148,6 +148,17 @@ class OccurrenceRepository {
   Future<bool> hasMedia(String occurrenceId) async =>
       (await countMedia(occurrenceId)) > 0;
 
+  Future<int> nextMediaSortOrder(String occurrenceId) async {
+    final media = await getMedia(occurrenceId);
+    if (media.isEmpty) return 0;
+    return media.last.sortOrder + 1;
+  }
+
+  Future<void> removeMedia(String mediaId) async {
+    await (_db.delete(_db.occurrenceMedia)..where((t) => t.id.equals(mediaId)))
+        .go();
+  }
+
   Future<Occurrence> beginMediaUpload(String id) async {
     final occurrence = await _requireOccurrence(id);
     final hasAttachedMedia = await hasMedia(id);

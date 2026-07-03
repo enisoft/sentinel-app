@@ -186,6 +186,56 @@ void main() {
       expect(hash, hasLength(64));
       expect(hash, matches(RegExp(r'^[0-9a-f]{64}$')));
     });
+
+    test('serializes occurrence with 3 media distinct hashes and sort_order', () async {
+      final occurrence = await occurrenceRepo.createOccurrence(
+        id: 'occ-three-media',
+        title: 'Três fotos',
+        description: 'Múltiplas mídias',
+        status: 'pending',
+        priority: 'medium',
+        occurredAt: DateTime.utc(2026, 7, 2, 12, 0),
+        createdAt: DateTime.utc(2026, 7, 2, 12, 0),
+        createdLocalAt: DateTime.utc(2026, 7, 2, 12, 0),
+      );
+
+      const hashes = [
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+      ];
+
+      for (var i = 0; i < 3; i++) {
+        await occurrenceRepo.attachMedia(
+          id: 'media-$i',
+          occurrenceId: occurrence.id,
+          mediaType: 'image',
+          localPath: '/tmp/photo-$i.jpg',
+          remotePath: 'occurrences/${occurrence.id}/photo-$i.jpg',
+          mimeType: 'image/jpeg',
+          sizeBytes: 1024 * (i + 1),
+          sortOrder: i,
+          contentHash: hashes[i],
+        );
+      }
+
+      final media = await occurrenceRepo.getMedia(occurrence.id);
+      final payload = serializer.serializeOccurrencesSyncPayload(
+        items: [(occurrence: occurrence, media: media)],
+      );
+
+      final json = (payload['occurrences'] as List).single as Map<String, dynamic>;
+      final mediaJson = json['media'] as List<dynamic>;
+      expect(mediaJson, hasLength(3));
+      expect(
+        mediaJson.map((m) => (m as Map)['sort_order'] as int).toList(),
+        [0, 1, 2],
+      );
+      expect(
+        mediaJson.map((m) => (m as Map)['content_hash'] as String).toSet(),
+        hashes.toSet(),
+      );
+    });
   });
 
   group('SyncPayloadSerializer — check-ins', () {

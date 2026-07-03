@@ -16,6 +16,7 @@ import 'package:sentinel_app/data/repositories/sync_queue_repository.dart';
 import 'package:sentinel_app/data/services/capture_occurrence_service.dart';
 import 'package:sentinel_app/data/services/occurrence_sync_coordinator.dart';
 import 'package:sentinel_app/presentation/capture/capture_home_screen.dart';
+import 'package:sentinel_app/presentation/capture/in_app_capture_screen.dart';
 import 'package:sentinel_app/presentation/capture/occurrence_draft_form_screen.dart';
 
 import '../../support/counting_occurrence_sync_foreground_runner.dart';
@@ -218,5 +219,68 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(countingRunner.runIfPendingCallCount, 1);
+  });
+
+  testWidgets('add media opens capture preview screen before attaching',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('add_media_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('in_app_capture_screen')), findsOneWidget);
+    expect(find.byType(InAppCaptureScreen), findsOneWidget);
+    expect(find.byType(OccurrenceDraftFormScreen), findsNothing);
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OccurrenceDraftFormScreen), findsOneWidget);
+    expect(find.byType(InAppCaptureScreen), findsNothing);
+  });
+
+  testWidgets('add and remove media on draft form updates attached media',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+
+    final form = tester.widget<OccurrenceDraftFormScreen>(
+      find.byType(OccurrenceDraftFormScreen),
+    );
+    final occurrenceId = form.occurrenceId;
+
+    expect(find.byKey(const Key('media_grid')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('add_media_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InAppCaptureScreen), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pumpAndSettle();
+
+    var media = await occurrenceRepo.getMedia(occurrenceId);
+    expect(media, hasLength(2));
+
+    final toRemove = media.last;
+    await tester.tap(find.byKey(Key('remove_media_${toRemove.id}')));
+    await tester.pumpAndSettle();
+
+    media = await occurrenceRepo.getMedia(occurrenceId);
+    expect(media, hasLength(1));
+    expect(media.single.sortOrder, 0);
   });
 }

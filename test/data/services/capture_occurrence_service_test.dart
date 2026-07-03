@@ -166,5 +166,76 @@ void main() {
       expect(draft.media.localPath, isNotEmpty);
       expect(draft.contentHash, isNotEmpty);
     });
+
+    test('addMediaToDraft appends media with incremental sort_order and distinct hash',
+        () async {
+      final draft = await captureService.captureDraft();
+
+      await captureService.addMediaToDraft(draft.occurrence.id);
+      await captureService.addMediaToDraft(draft.occurrence.id);
+
+      final media = await occurrenceRepo.getMedia(draft.occurrence.id);
+      expect(media, hasLength(3));
+      expect(media.map((m) => m.sortOrder), [0, 1, 2]);
+
+      final hashes = media.map((m) => m.contentHash).toSet();
+      expect(hashes, hasLength(3));
+      expect(camera.captureCallCount, 3);
+      expect(hashService.hashCallCount, 3);
+    });
+
+    test('attachCaptureToDraft attaches pre-captured media without calling camera',
+        () async {
+      final draft = await captureService.captureDraft();
+      final captureCountBefore = camera.captureCallCount;
+
+      final capture = await camera.capture();
+      await captureService.attachCaptureToDraft(
+        occurrenceId: draft.occurrence.id,
+        capture: capture,
+      );
+
+      final media = await occurrenceRepo.getMedia(draft.occurrence.id);
+      expect(media, hasLength(2));
+      expect(camera.captureCallCount, captureCountBefore + 1);
+    });
+
+    test('removeMediaFromDraft removes item from draft state', () async {
+      final draft = await captureService.captureDraft();
+      final second = await captureService.addMediaToDraft(draft.occurrence.id);
+
+      await captureService.removeMediaFromDraft(
+        occurrenceId: draft.occurrence.id,
+        mediaId: second.id,
+      );
+
+      final media = await occurrenceRepo.getMedia(draft.occurrence.id);
+      expect(media, hasLength(1));
+      expect(media.single.id, draft.media.id);
+    });
+
+    test('confirm with multiple media enqueues occurrence for sync', () async {
+      final draft = await captureService.captureDraft();
+      await captureService.addMediaToDraft(draft.occurrence.id);
+      await captureService.addMediaToDraft(draft.occurrence.id);
+
+      await captureService.confirmDraft(occurrenceId: draft.occurrence.id);
+
+      final media = await occurrenceRepo.getMedia(draft.occurrence.id);
+      expect(media, hasLength(3));
+
+      final pending = await queueRepo.getPending();
+      expect(pending.occurrences.map((o) => o.id), [draft.occurrence.id]);
+    });
+
+    test('addMediaToDraft rejects non-draft occurrence', () async {
+      final draft = await captureService.captureDraft();
+      await captureService.confirmDraft(occurrenceId: draft.occurrence.id);
+
+      expect(
+        () => captureService.addMediaToDraft(draft.occurrence.id),
+        throwsStateError,
+      );
+    });
   });
 }
