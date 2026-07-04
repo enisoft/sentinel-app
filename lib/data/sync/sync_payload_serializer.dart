@@ -22,6 +22,7 @@ class SyncPayloadSerializer {
       'id': occurrence.id,
       'observable_id': occurrence.observableId,
       'category_id': occurrence.categoryId,
+      if (occurrence.zonaId != null) 'zona_id': occurrence.zonaId,
       'title': occurrence.title,
       'description': occurrence.description,
       'status': occurrence.status,

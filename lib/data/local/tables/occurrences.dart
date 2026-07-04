@@ -15,6 +15,7 @@ class Occurrences extends Table {
   DateTimeColumn get resolvedAt => dateTime().nullable()();
   TextColumn get observableId => text().nullable()();
   TextColumn get categoryId => text().nullable()();
+  TextColumn get zonaId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
   TextColumn get syncState =>

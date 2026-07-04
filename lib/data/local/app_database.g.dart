@@ -135,6 +135,15 @@ class $OccurrencesTable extends Occurrences
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _zonaIdMeta = const VerificationMeta('zonaId');
+  @override
+  late final GeneratedColumn<String> zonaId = GeneratedColumn<String>(
+    'zona_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -260,6 +269,7 @@ class $OccurrencesTable extends Occurrences
     resolvedAt,
     observableId,
     categoryId,
+    zonaId,
     createdAt,
     updatedAt,
     syncState,
@@ -368,6 +378,12 @@ class $OccurrencesTable extends Occurrences
       context.handle(
         _categoryIdMeta,
         categoryId.isAcceptableOrUnknown(data['category_id']!, _categoryIdMeta),
+      );
+    }
+    if (data.containsKey('zona_id')) {
+      context.handle(
+        _zonaIdMeta,
+        zonaId.isAcceptableOrUnknown(data['zona_id']!, _zonaIdMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -491,6 +507,10 @@ class $OccurrencesTable extends Occurrences
         DriftSqlType.string,
         data['${effectivePrefix}category_id'],
       ),
+      zonaId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}zona_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -564,6 +584,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
   final DateTime? resolvedAt;
   final String? observableId;
   final String? categoryId;
+  final String? zonaId;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final SyncState syncState;
@@ -587,6 +608,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     this.resolvedAt,
     this.observableId,
     this.categoryId,
+    this.zonaId,
     required this.createdAt,
     this.updatedAt,
     required this.syncState,
@@ -624,6 +646,9 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     }
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<String>(categoryId);
+    }
+    if (!nullToAbsent || zonaId != null) {
+      map['zona_id'] = Variable<String>(zonaId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || updatedAt != null) {
@@ -682,6 +707,9 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
+      zonaId: zonaId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(zonaId),
       createdAt: Value(createdAt),
       updatedAt: updatedAt == null && nullToAbsent
           ? const Value.absent()
@@ -725,6 +753,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       resolvedAt: serializer.fromJson<DateTime?>(json['resolvedAt']),
       observableId: serializer.fromJson<String?>(json['observableId']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
+      zonaId: serializer.fromJson<String?>(json['zonaId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
       syncState: serializer.fromJson<SyncState>(json['syncState']),
@@ -753,6 +782,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       'resolvedAt': serializer.toJson<DateTime?>(resolvedAt),
       'observableId': serializer.toJson<String?>(observableId),
       'categoryId': serializer.toJson<String?>(categoryId),
+      'zonaId': serializer.toJson<String?>(zonaId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
       'syncState': serializer.toJson<SyncState>(syncState),
@@ -779,6 +809,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     Value<DateTime?> resolvedAt = const Value.absent(),
     Value<String?> observableId = const Value.absent(),
     Value<String?> categoryId = const Value.absent(),
+    Value<String?> zonaId = const Value.absent(),
     DateTime? createdAt,
     Value<DateTime?> updatedAt = const Value.absent(),
     SyncState? syncState,
@@ -802,6 +833,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     resolvedAt: resolvedAt.present ? resolvedAt.value : this.resolvedAt,
     observableId: observableId.present ? observableId.value : this.observableId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
+    zonaId: zonaId.present ? zonaId.value : this.zonaId,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
     syncState: syncState ?? this.syncState,
@@ -841,6 +873,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
+      zonaId: data.zonaId.present ? data.zonaId.value : this.zonaId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       syncState: data.syncState.present ? data.syncState.value : this.syncState,
@@ -881,6 +914,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
           ..write('resolvedAt: $resolvedAt, ')
           ..write('observableId: $observableId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('zonaId: $zonaId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncState: $syncState, ')
@@ -909,6 +943,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     resolvedAt,
     observableId,
     categoryId,
+    zonaId,
     createdAt,
     updatedAt,
     syncState,
@@ -936,6 +971,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
           other.resolvedAt == this.resolvedAt &&
           other.observableId == this.observableId &&
           other.categoryId == this.categoryId &&
+          other.zonaId == this.zonaId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.syncState == this.syncState &&
@@ -961,6 +997,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
   final Value<DateTime?> resolvedAt;
   final Value<String?> observableId;
   final Value<String?> categoryId;
+  final Value<String?> zonaId;
   final Value<DateTime> createdAt;
   final Value<DateTime?> updatedAt;
   final Value<SyncState> syncState;
@@ -985,6 +1022,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     this.resolvedAt = const Value.absent(),
     this.observableId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.zonaId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.syncState = const Value.absent(),
@@ -1010,6 +1048,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     this.resolvedAt = const Value.absent(),
     this.observableId = const Value.absent(),
     this.categoryId = const Value.absent(),
+    this.zonaId = const Value.absent(),
     required DateTime createdAt,
     this.updatedAt = const Value.absent(),
     this.syncState = const Value.absent(),
@@ -1042,6 +1081,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     Expression<DateTime>? resolvedAt,
     Expression<String>? observableId,
     Expression<String>? categoryId,
+    Expression<String>? zonaId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? syncState,
@@ -1067,6 +1107,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
       if (resolvedAt != null) 'resolved_at': resolvedAt,
       if (observableId != null) 'observable_id': observableId,
       if (categoryId != null) 'category_id': categoryId,
+      if (zonaId != null) 'zona_id': zonaId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (syncState != null) 'sync_state': syncState,
@@ -1094,6 +1135,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     Value<DateTime?>? resolvedAt,
     Value<String?>? observableId,
     Value<String?>? categoryId,
+    Value<String?>? zonaId,
     Value<DateTime>? createdAt,
     Value<DateTime?>? updatedAt,
     Value<SyncState>? syncState,
@@ -1119,6 +1161,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
       resolvedAt: resolvedAt ?? this.resolvedAt,
       observableId: observableId ?? this.observableId,
       categoryId: categoryId ?? this.categoryId,
+      zonaId: zonaId ?? this.zonaId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       syncState: syncState ?? this.syncState,
@@ -1171,6 +1214,9 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     }
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
+    }
+    if (zonaId.present) {
+      map['zona_id'] = Variable<String>(zonaId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1227,6 +1273,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
           ..write('resolvedAt: $resolvedAt, ')
           ..write('observableId: $observableId, ')
           ..write('categoryId: $categoryId, ')
+          ..write('zonaId: $zonaId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('syncState: $syncState, ')
@@ -2763,6 +2810,29 @@ class $CachedOperatorProfilesTable extends CachedOperatorProfiles
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _zonesJsonMeta = const VerificationMeta(
+    'zonesJson',
+  );
+  @override
+  late final GeneratedColumn<String> zonesJson = GeneratedColumn<String>(
+    'zones_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _defaultZoneIdMeta = const VerificationMeta(
+    'defaultZoneId',
+  );
+  @override
+  late final GeneratedColumn<String> defaultZoneId = GeneratedColumn<String>(
+    'default_zone_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _cachedAtMeta = const VerificationMeta(
     'cachedAt',
   );
@@ -2781,6 +2851,8 @@ class $CachedOperatorProfilesTable extends CachedOperatorProfiles
     role,
     municipalityId,
     photoPath,
+    zonesJson,
+    defaultZoneId,
     cachedAt,
   ];
   @override
@@ -2831,6 +2903,21 @@ class $CachedOperatorProfilesTable extends CachedOperatorProfiles
         photoPath.isAcceptableOrUnknown(data['photo_path']!, _photoPathMeta),
       );
     }
+    if (data.containsKey('zones_json')) {
+      context.handle(
+        _zonesJsonMeta,
+        zonesJson.isAcceptableOrUnknown(data['zones_json']!, _zonesJsonMeta),
+      );
+    }
+    if (data.containsKey('default_zone_id')) {
+      context.handle(
+        _defaultZoneIdMeta,
+        defaultZoneId.isAcceptableOrUnknown(
+          data['default_zone_id']!,
+          _defaultZoneIdMeta,
+        ),
+      );
+    }
     if (data.containsKey('cached_at')) {
       context.handle(
         _cachedAtMeta,
@@ -2868,6 +2955,14 @@ class $CachedOperatorProfilesTable extends CachedOperatorProfiles
         DriftSqlType.string,
         data['${effectivePrefix}photo_path'],
       ),
+      zonesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}zones_json'],
+      )!,
+      defaultZoneId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}default_zone_id'],
+      ),
       cachedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}cached_at'],
@@ -2888,6 +2983,8 @@ class CachedOperatorProfile extends DataClass
   final String role;
   final String? municipalityId;
   final String? photoPath;
+  final String zonesJson;
+  final String? defaultZoneId;
   final DateTime cachedAt;
   const CachedOperatorProfile({
     required this.id,
@@ -2895,6 +2992,8 @@ class CachedOperatorProfile extends DataClass
     required this.role,
     this.municipalityId,
     this.photoPath,
+    required this.zonesJson,
+    this.defaultZoneId,
     required this.cachedAt,
   });
   @override
@@ -2908,6 +3007,10 @@ class CachedOperatorProfile extends DataClass
     }
     if (!nullToAbsent || photoPath != null) {
       map['photo_path'] = Variable<String>(photoPath);
+    }
+    map['zones_json'] = Variable<String>(zonesJson);
+    if (!nullToAbsent || defaultZoneId != null) {
+      map['default_zone_id'] = Variable<String>(defaultZoneId);
     }
     map['cached_at'] = Variable<DateTime>(cachedAt);
     return map;
@@ -2924,6 +3027,10 @@ class CachedOperatorProfile extends DataClass
       photoPath: photoPath == null && nullToAbsent
           ? const Value.absent()
           : Value(photoPath),
+      zonesJson: Value(zonesJson),
+      defaultZoneId: defaultZoneId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(defaultZoneId),
       cachedAt: Value(cachedAt),
     );
   }
@@ -2939,6 +3046,8 @@ class CachedOperatorProfile extends DataClass
       role: serializer.fromJson<String>(json['role']),
       municipalityId: serializer.fromJson<String?>(json['municipalityId']),
       photoPath: serializer.fromJson<String?>(json['photoPath']),
+      zonesJson: serializer.fromJson<String>(json['zonesJson']),
+      defaultZoneId: serializer.fromJson<String?>(json['defaultZoneId']),
       cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
     );
   }
@@ -2951,6 +3060,8 @@ class CachedOperatorProfile extends DataClass
       'role': serializer.toJson<String>(role),
       'municipalityId': serializer.toJson<String?>(municipalityId),
       'photoPath': serializer.toJson<String?>(photoPath),
+      'zonesJson': serializer.toJson<String>(zonesJson),
+      'defaultZoneId': serializer.toJson<String?>(defaultZoneId),
       'cachedAt': serializer.toJson<DateTime>(cachedAt),
     };
   }
@@ -2961,6 +3072,8 @@ class CachedOperatorProfile extends DataClass
     String? role,
     Value<String?> municipalityId = const Value.absent(),
     Value<String?> photoPath = const Value.absent(),
+    String? zonesJson,
+    Value<String?> defaultZoneId = const Value.absent(),
     DateTime? cachedAt,
   }) => CachedOperatorProfile(
     id: id ?? this.id,
@@ -2970,6 +3083,10 @@ class CachedOperatorProfile extends DataClass
         ? municipalityId.value
         : this.municipalityId,
     photoPath: photoPath.present ? photoPath.value : this.photoPath,
+    zonesJson: zonesJson ?? this.zonesJson,
+    defaultZoneId: defaultZoneId.present
+        ? defaultZoneId.value
+        : this.defaultZoneId,
     cachedAt: cachedAt ?? this.cachedAt,
   );
   CachedOperatorProfile copyWithCompanion(
@@ -2983,6 +3100,10 @@ class CachedOperatorProfile extends DataClass
           ? data.municipalityId.value
           : this.municipalityId,
       photoPath: data.photoPath.present ? data.photoPath.value : this.photoPath,
+      zonesJson: data.zonesJson.present ? data.zonesJson.value : this.zonesJson,
+      defaultZoneId: data.defaultZoneId.present
+          ? data.defaultZoneId.value
+          : this.defaultZoneId,
       cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
     );
   }
@@ -2995,14 +3116,24 @@ class CachedOperatorProfile extends DataClass
           ..write('role: $role, ')
           ..write('municipalityId: $municipalityId, ')
           ..write('photoPath: $photoPath, ')
+          ..write('zonesJson: $zonesJson, ')
+          ..write('defaultZoneId: $defaultZoneId, ')
           ..write('cachedAt: $cachedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, name, role, municipalityId, photoPath, cachedAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    role,
+    municipalityId,
+    photoPath,
+    zonesJson,
+    defaultZoneId,
+    cachedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3012,6 +3143,8 @@ class CachedOperatorProfile extends DataClass
           other.role == this.role &&
           other.municipalityId == this.municipalityId &&
           other.photoPath == this.photoPath &&
+          other.zonesJson == this.zonesJson &&
+          other.defaultZoneId == this.defaultZoneId &&
           other.cachedAt == this.cachedAt);
 }
 
@@ -3022,6 +3155,8 @@ class CachedOperatorProfilesCompanion
   final Value<String> role;
   final Value<String?> municipalityId;
   final Value<String?> photoPath;
+  final Value<String> zonesJson;
+  final Value<String?> defaultZoneId;
   final Value<DateTime> cachedAt;
   final Value<int> rowid;
   const CachedOperatorProfilesCompanion({
@@ -3030,6 +3165,8 @@ class CachedOperatorProfilesCompanion
     this.role = const Value.absent(),
     this.municipalityId = const Value.absent(),
     this.photoPath = const Value.absent(),
+    this.zonesJson = const Value.absent(),
+    this.defaultZoneId = const Value.absent(),
     this.cachedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3039,6 +3176,8 @@ class CachedOperatorProfilesCompanion
     required String role,
     this.municipalityId = const Value.absent(),
     this.photoPath = const Value.absent(),
+    this.zonesJson = const Value.absent(),
+    this.defaultZoneId = const Value.absent(),
     required DateTime cachedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -3051,6 +3190,8 @@ class CachedOperatorProfilesCompanion
     Expression<String>? role,
     Expression<String>? municipalityId,
     Expression<String>? photoPath,
+    Expression<String>? zonesJson,
+    Expression<String>? defaultZoneId,
     Expression<DateTime>? cachedAt,
     Expression<int>? rowid,
   }) {
@@ -3060,6 +3201,8 @@ class CachedOperatorProfilesCompanion
       if (role != null) 'role': role,
       if (municipalityId != null) 'municipality_id': municipalityId,
       if (photoPath != null) 'photo_path': photoPath,
+      if (zonesJson != null) 'zones_json': zonesJson,
+      if (defaultZoneId != null) 'default_zone_id': defaultZoneId,
       if (cachedAt != null) 'cached_at': cachedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3071,6 +3214,8 @@ class CachedOperatorProfilesCompanion
     Value<String>? role,
     Value<String?>? municipalityId,
     Value<String?>? photoPath,
+    Value<String>? zonesJson,
+    Value<String?>? defaultZoneId,
     Value<DateTime>? cachedAt,
     Value<int>? rowid,
   }) {
@@ -3080,6 +3225,8 @@ class CachedOperatorProfilesCompanion
       role: role ?? this.role,
       municipalityId: municipalityId ?? this.municipalityId,
       photoPath: photoPath ?? this.photoPath,
+      zonesJson: zonesJson ?? this.zonesJson,
+      defaultZoneId: defaultZoneId ?? this.defaultZoneId,
       cachedAt: cachedAt ?? this.cachedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -3103,6 +3250,12 @@ class CachedOperatorProfilesCompanion
     if (photoPath.present) {
       map['photo_path'] = Variable<String>(photoPath.value);
     }
+    if (zonesJson.present) {
+      map['zones_json'] = Variable<String>(zonesJson.value);
+    }
+    if (defaultZoneId.present) {
+      map['default_zone_id'] = Variable<String>(defaultZoneId.value);
+    }
     if (cachedAt.present) {
       map['cached_at'] = Variable<DateTime>(cachedAt.value);
     }
@@ -3120,6 +3273,8 @@ class CachedOperatorProfilesCompanion
           ..write('role: $role, ')
           ..write('municipalityId: $municipalityId, ')
           ..write('photoPath: $photoPath, ')
+          ..write('zonesJson: $zonesJson, ')
+          ..write('defaultZoneId: $defaultZoneId, ')
           ..write('cachedAt: $cachedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4054,6 +4209,372 @@ class MunicipalitiesCompanion extends UpdateCompanion<Municipality> {
   }
 }
 
+class $CatalogZonesTable extends CatalogZones
+    with TableInfo<$CatalogZonesTable, CatalogZone> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CatalogZonesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nomeMeta = const VerificationMeta('nome');
+  @override
+  late final GeneratedColumn<String> nome = GeneratedColumn<String>(
+    'nome',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _tipoMeta = const VerificationMeta('tipo');
+  @override
+  late final GeneratedColumn<String> tipo = GeneratedColumn<String>(
+    'tipo',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _municipioPaiIdMeta = const VerificationMeta(
+    'municipioPaiId',
+  );
+  @override
+  late final GeneratedColumn<String> municipioPaiId = GeneratedColumn<String>(
+    'municipio_pai_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    nome,
+    tipo,
+    municipioPaiId,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'catalog_zones';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CatalogZone> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('nome')) {
+      context.handle(
+        _nomeMeta,
+        nome.isAcceptableOrUnknown(data['nome']!, _nomeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nomeMeta);
+    }
+    if (data.containsKey('tipo')) {
+      context.handle(
+        _tipoMeta,
+        tipo.isAcceptableOrUnknown(data['tipo']!, _tipoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tipoMeta);
+    }
+    if (data.containsKey('municipio_pai_id')) {
+      context.handle(
+        _municipioPaiIdMeta,
+        municipioPaiId.isAcceptableOrUnknown(
+          data['municipio_pai_id']!,
+          _municipioPaiIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CatalogZone map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CatalogZone(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      nome: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nome'],
+      )!,
+      tipo: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tipo'],
+      )!,
+      municipioPaiId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}municipio_pai_id'],
+      ),
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CatalogZonesTable createAlias(String alias) {
+    return $CatalogZonesTable(attachedDatabase, alias);
+  }
+}
+
+class CatalogZone extends DataClass implements Insertable<CatalogZone> {
+  final String id;
+  final String nome;
+  final String tipo;
+  final String? municipioPaiId;
+  final DateTime updatedAt;
+  const CatalogZone({
+    required this.id,
+    required this.nome,
+    required this.tipo,
+    this.municipioPaiId,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['nome'] = Variable<String>(nome);
+    map['tipo'] = Variable<String>(tipo);
+    if (!nullToAbsent || municipioPaiId != null) {
+      map['municipio_pai_id'] = Variable<String>(municipioPaiId);
+    }
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CatalogZonesCompanion toCompanion(bool nullToAbsent) {
+    return CatalogZonesCompanion(
+      id: Value(id),
+      nome: Value(nome),
+      tipo: Value(tipo),
+      municipioPaiId: municipioPaiId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(municipioPaiId),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory CatalogZone.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CatalogZone(
+      id: serializer.fromJson<String>(json['id']),
+      nome: serializer.fromJson<String>(json['nome']),
+      tipo: serializer.fromJson<String>(json['tipo']),
+      municipioPaiId: serializer.fromJson<String?>(json['municipioPaiId']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'nome': serializer.toJson<String>(nome),
+      'tipo': serializer.toJson<String>(tipo),
+      'municipioPaiId': serializer.toJson<String?>(municipioPaiId),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  CatalogZone copyWith({
+    String? id,
+    String? nome,
+    String? tipo,
+    Value<String?> municipioPaiId = const Value.absent(),
+    DateTime? updatedAt,
+  }) => CatalogZone(
+    id: id ?? this.id,
+    nome: nome ?? this.nome,
+    tipo: tipo ?? this.tipo,
+    municipioPaiId: municipioPaiId.present
+        ? municipioPaiId.value
+        : this.municipioPaiId,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  CatalogZone copyWithCompanion(CatalogZonesCompanion data) {
+    return CatalogZone(
+      id: data.id.present ? data.id.value : this.id,
+      nome: data.nome.present ? data.nome.value : this.nome,
+      tipo: data.tipo.present ? data.tipo.value : this.tipo,
+      municipioPaiId: data.municipioPaiId.present
+          ? data.municipioPaiId.value
+          : this.municipioPaiId,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogZone(')
+          ..write('id: $id, ')
+          ..write('nome: $nome, ')
+          ..write('tipo: $tipo, ')
+          ..write('municipioPaiId: $municipioPaiId, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, nome, tipo, municipioPaiId, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CatalogZone &&
+          other.id == this.id &&
+          other.nome == this.nome &&
+          other.tipo == this.tipo &&
+          other.municipioPaiId == this.municipioPaiId &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CatalogZonesCompanion extends UpdateCompanion<CatalogZone> {
+  final Value<String> id;
+  final Value<String> nome;
+  final Value<String> tipo;
+  final Value<String?> municipioPaiId;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CatalogZonesCompanion({
+    this.id = const Value.absent(),
+    this.nome = const Value.absent(),
+    this.tipo = const Value.absent(),
+    this.municipioPaiId = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CatalogZonesCompanion.insert({
+    required String id,
+    required String nome,
+    required String tipo,
+    this.municipioPaiId = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       nome = Value(nome),
+       tipo = Value(tipo),
+       updatedAt = Value(updatedAt);
+  static Insertable<CatalogZone> custom({
+    Expression<String>? id,
+    Expression<String>? nome,
+    Expression<String>? tipo,
+    Expression<String>? municipioPaiId,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (nome != null) 'nome': nome,
+      if (tipo != null) 'tipo': tipo,
+      if (municipioPaiId != null) 'municipio_pai_id': municipioPaiId,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CatalogZonesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? nome,
+    Value<String>? tipo,
+    Value<String?>? municipioPaiId,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CatalogZonesCompanion(
+      id: id ?? this.id,
+      nome: nome ?? this.nome,
+      tipo: tipo ?? this.tipo,
+      municipioPaiId: municipioPaiId ?? this.municipioPaiId,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (nome.present) {
+      map['nome'] = Variable<String>(nome.value);
+    }
+    if (tipo.present) {
+      map['tipo'] = Variable<String>(tipo.value);
+    }
+    if (municipioPaiId.present) {
+      map['municipio_pai_id'] = Variable<String>(municipioPaiId.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogZonesCompanion(')
+          ..write('id: $id, ')
+          ..write('nome: $nome, ')
+          ..write('tipo: $tipo, ')
+          ..write('municipioPaiId: $municipioPaiId, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $CatalogSyncCursorsTable extends CatalogSyncCursors
     with TableInfo<$CatalogSyncCursorsTable, CatalogSyncCursor> {
   @override
@@ -4294,6 +4815,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $CategoriesTable categories = $CategoriesTable(this);
   late final $ObservablesTable observables = $ObservablesTable(this);
   late final $MunicipalitiesTable municipalities = $MunicipalitiesTable(this);
+  late final $CatalogZonesTable catalogZones = $CatalogZonesTable(this);
   late final $CatalogSyncCursorsTable catalogSyncCursors =
       $CatalogSyncCursorsTable(this);
   @override
@@ -4308,6 +4830,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     categories,
     observables,
     municipalities,
+    catalogZones,
     catalogSyncCursors,
   ];
   @override
@@ -4336,6 +4859,7 @@ typedef $$OccurrencesTableCreateCompanionBuilder =
       Value<DateTime?> resolvedAt,
       Value<String?> observableId,
       Value<String?> categoryId,
+      Value<String?> zonaId,
       required DateTime createdAt,
       Value<DateTime?> updatedAt,
       Value<SyncState> syncState,
@@ -4362,6 +4886,7 @@ typedef $$OccurrencesTableUpdateCompanionBuilder =
       Value<DateTime?> resolvedAt,
       Value<String?> observableId,
       Value<String?> categoryId,
+      Value<String?> zonaId,
       Value<DateTime> createdAt,
       Value<DateTime?> updatedAt,
       Value<SyncState> syncState,
@@ -4469,6 +4994,11 @@ class $$OccurrencesTableFilterComposer
 
   ColumnFilters<String> get categoryId => $composableBuilder(
     column: $table.categoryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get zonaId => $composableBuilder(
+    column: $table.zonaId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4619,6 +5149,11 @@ class $$OccurrencesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get zonaId => $composableBuilder(
+    column: $table.zonaId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4724,6 +5259,9 @@ class $$OccurrencesTableAnnotationComposer
     column: $table.categoryId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get zonaId =>
+      $composableBuilder(column: $table.zonaId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4834,6 +5372,7 @@ class $$OccurrencesTableTableManager
                 Value<DateTime?> resolvedAt = const Value.absent(),
                 Value<String?> observableId = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
+                Value<String?> zonaId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<SyncState> syncState = const Value.absent(),
@@ -4858,6 +5397,7 @@ class $$OccurrencesTableTableManager
                 resolvedAt: resolvedAt,
                 observableId: observableId,
                 categoryId: categoryId,
+                zonaId: zonaId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 syncState: syncState,
@@ -4884,6 +5424,7 @@ class $$OccurrencesTableTableManager
                 Value<DateTime?> resolvedAt = const Value.absent(),
                 Value<String?> observableId = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
+                Value<String?> zonaId = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> updatedAt = const Value.absent(),
                 Value<SyncState> syncState = const Value.absent(),
@@ -4908,6 +5449,7 @@ class $$OccurrencesTableTableManager
                 resolvedAt: resolvedAt,
                 observableId: observableId,
                 categoryId: categoryId,
+                zonaId: zonaId,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 syncState: syncState,
@@ -5805,6 +6347,8 @@ typedef $$CachedOperatorProfilesTableCreateCompanionBuilder =
       required String role,
       Value<String?> municipalityId,
       Value<String?> photoPath,
+      Value<String> zonesJson,
+      Value<String?> defaultZoneId,
       required DateTime cachedAt,
       Value<int> rowid,
     });
@@ -5815,6 +6359,8 @@ typedef $$CachedOperatorProfilesTableUpdateCompanionBuilder =
       Value<String> role,
       Value<String?> municipalityId,
       Value<String?> photoPath,
+      Value<String> zonesJson,
+      Value<String?> defaultZoneId,
       Value<DateTime> cachedAt,
       Value<int> rowid,
     });
@@ -5850,6 +6396,16 @@ class $$CachedOperatorProfilesTableFilterComposer
 
   ColumnFilters<String> get photoPath => $composableBuilder(
     column: $table.photoPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get zonesJson => $composableBuilder(
+    column: $table.zonesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get defaultZoneId => $composableBuilder(
+    column: $table.defaultZoneId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5893,6 +6449,16 @@ class $$CachedOperatorProfilesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get zonesJson => $composableBuilder(
+    column: $table.zonesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get defaultZoneId => $composableBuilder(
+    column: $table.defaultZoneId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
     column: $table.cachedAt,
     builder: (column) => ColumnOrderings(column),
@@ -5924,6 +6490,14 @@ class $$CachedOperatorProfilesTableAnnotationComposer
 
   GeneratedColumn<String> get photoPath =>
       $composableBuilder(column: $table.photoPath, builder: (column) => column);
+
+  GeneratedColumn<String> get zonesJson =>
+      $composableBuilder(column: $table.zonesJson, builder: (column) => column);
+
+  GeneratedColumn<String> get defaultZoneId => $composableBuilder(
+    column: $table.defaultZoneId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get cachedAt =>
       $composableBuilder(column: $table.cachedAt, builder: (column) => column);
@@ -5980,6 +6554,8 @@ class $$CachedOperatorProfilesTableTableManager
                 Value<String> role = const Value.absent(),
                 Value<String?> municipalityId = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
+                Value<String> zonesJson = const Value.absent(),
+                Value<String?> defaultZoneId = const Value.absent(),
                 Value<DateTime> cachedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CachedOperatorProfilesCompanion(
@@ -5988,6 +6564,8 @@ class $$CachedOperatorProfilesTableTableManager
                 role: role,
                 municipalityId: municipalityId,
                 photoPath: photoPath,
+                zonesJson: zonesJson,
+                defaultZoneId: defaultZoneId,
                 cachedAt: cachedAt,
                 rowid: rowid,
               ),
@@ -5998,6 +6576,8 @@ class $$CachedOperatorProfilesTableTableManager
                 required String role,
                 Value<String?> municipalityId = const Value.absent(),
                 Value<String?> photoPath = const Value.absent(),
+                Value<String> zonesJson = const Value.absent(),
+                Value<String?> defaultZoneId = const Value.absent(),
                 required DateTime cachedAt,
                 Value<int> rowid = const Value.absent(),
               }) => CachedOperatorProfilesCompanion.insert(
@@ -6006,6 +6586,8 @@ class $$CachedOperatorProfilesTableTableManager
                 role: role,
                 municipalityId: municipalityId,
                 photoPath: photoPath,
+                zonesJson: zonesJson,
+                defaultZoneId: defaultZoneId,
                 cachedAt: cachedAt,
                 rowid: rowid,
               ),
@@ -6577,6 +7159,208 @@ typedef $$MunicipalitiesTableProcessedTableManager =
       Municipality,
       PrefetchHooks Function()
     >;
+typedef $$CatalogZonesTableCreateCompanionBuilder =
+    CatalogZonesCompanion Function({
+      required String id,
+      required String nome,
+      required String tipo,
+      Value<String?> municipioPaiId,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CatalogZonesTableUpdateCompanionBuilder =
+    CatalogZonesCompanion Function({
+      Value<String> id,
+      Value<String> nome,
+      Value<String> tipo,
+      Value<String?> municipioPaiId,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CatalogZonesTableFilterComposer
+    extends Composer<_$AppDatabase, $CatalogZonesTable> {
+  $$CatalogZonesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nome => $composableBuilder(
+    column: $table.nome,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get tipo => $composableBuilder(
+    column: $table.tipo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get municipioPaiId => $composableBuilder(
+    column: $table.municipioPaiId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CatalogZonesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CatalogZonesTable> {
+  $$CatalogZonesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nome => $composableBuilder(
+    column: $table.nome,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get tipo => $composableBuilder(
+    column: $table.tipo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get municipioPaiId => $composableBuilder(
+    column: $table.municipioPaiId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CatalogZonesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CatalogZonesTable> {
+  $$CatalogZonesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get nome =>
+      $composableBuilder(column: $table.nome, builder: (column) => column);
+
+  GeneratedColumn<String> get tipo =>
+      $composableBuilder(column: $table.tipo, builder: (column) => column);
+
+  GeneratedColumn<String> get municipioPaiId => $composableBuilder(
+    column: $table.municipioPaiId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CatalogZonesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CatalogZonesTable,
+          CatalogZone,
+          $$CatalogZonesTableFilterComposer,
+          $$CatalogZonesTableOrderingComposer,
+          $$CatalogZonesTableAnnotationComposer,
+          $$CatalogZonesTableCreateCompanionBuilder,
+          $$CatalogZonesTableUpdateCompanionBuilder,
+          (
+            CatalogZone,
+            BaseReferences<_$AppDatabase, $CatalogZonesTable, CatalogZone>,
+          ),
+          CatalogZone,
+          PrefetchHooks Function()
+        > {
+  $$CatalogZonesTableTableManager(_$AppDatabase db, $CatalogZonesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CatalogZonesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CatalogZonesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CatalogZonesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> nome = const Value.absent(),
+                Value<String> tipo = const Value.absent(),
+                Value<String?> municipioPaiId = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogZonesCompanion(
+                id: id,
+                nome: nome,
+                tipo: tipo,
+                municipioPaiId: municipioPaiId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String nome,
+                required String tipo,
+                Value<String?> municipioPaiId = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogZonesCompanion.insert(
+                id: id,
+                nome: nome,
+                tipo: tipo,
+                municipioPaiId: municipioPaiId,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CatalogZonesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CatalogZonesTable,
+      CatalogZone,
+      $$CatalogZonesTableFilterComposer,
+      $$CatalogZonesTableOrderingComposer,
+      $$CatalogZonesTableAnnotationComposer,
+      $$CatalogZonesTableCreateCompanionBuilder,
+      $$CatalogZonesTableUpdateCompanionBuilder,
+      (
+        CatalogZone,
+        BaseReferences<_$AppDatabase, $CatalogZonesTable, CatalogZone>,
+      ),
+      CatalogZone,
+      PrefetchHooks Function()
+    >;
 typedef $$CatalogSyncCursorsTableCreateCompanionBuilder =
     CatalogSyncCursorsCompanion Function({
       required String entity,
@@ -6756,6 +7540,8 @@ class $AppDatabaseManager {
       $$ObservablesTableTableManager(_db, _db.observables);
   $$MunicipalitiesTableTableManager get municipalities =>
       $$MunicipalitiesTableTableManager(_db, _db.municipalities);
+  $$CatalogZonesTableTableManager get catalogZones =>
+      $$CatalogZonesTableTableManager(_db, _db.catalogZones);
   $$CatalogSyncCursorsTableTableManager get catalogSyncCursors =>
       $$CatalogSyncCursorsTableTableManager(_db, _db.catalogSyncCursors);
 }

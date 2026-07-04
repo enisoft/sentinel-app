@@ -29,6 +29,7 @@ class OccurrenceRepository {
     DateTime? resolvedAt,
     String? observableId,
     String? categoryId,
+    String? zonaId,
     DateTime? updatedAt,
     String? id,
     DateTime? createdLocalAt,
@@ -53,6 +54,7 @@ class OccurrenceRepository {
       resolvedAt: Value(resolvedAt),
       observableId: Value(observableId),
       categoryId: Value(categoryId),
+      zonaId: Value(zonaId),
       updatedAt: Value(updatedAt),
     );
 
@@ -123,6 +125,7 @@ class OccurrenceRepository {
     required String id,
     String? categoryId,
     String? observableId,
+    String? zonaId,
     String? description,
     String? title,
     String? status,
@@ -133,6 +136,7 @@ class OccurrenceRepository {
       categoryId: categoryId != null ? Value(categoryId) : const Value.absent(),
       observableId:
           observableId != null ? Value(observableId) : const Value.absent(),
+      zonaId: zonaId != null ? Value(zonaId) : const Value.absent(),
       description: description != null ? Value(description) : const Value.absent(),
       title: title != null ? Value(title) : const Value.absent(),
       status: status != null ? Value(status) : const Value.absent(),

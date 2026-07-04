@@ -136,12 +136,14 @@ class CaptureOccurrenceService {
     required String occurrenceId,
     String? categoryId,
     String? observableId,
+    String? zonaId,
     String? note,
   }) {
     return _occurrenceRepository.updateDraft(
       id: occurrenceId,
       categoryId: categoryId,
       observableId: observableId,
+      zonaId: zonaId,
       description: note,
     );
   }
@@ -151,6 +153,7 @@ class CaptureOccurrenceService {
     required String occurrenceId,
     String? categoryId,
     String? observableId,
+    String? zonaId,
     String? note,
   }) async {
     final primaryMedia =
@@ -164,6 +167,7 @@ class CaptureOccurrenceService {
       id: occurrenceId,
       categoryId: categoryId,
       observableId: observableId,
+      zonaId: zonaId,
       description: text.description,
       title: text.title,
       status: OccurrenceLifecycleStatus.pending,

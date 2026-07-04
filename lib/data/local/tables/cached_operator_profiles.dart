@@ -6,6 +6,9 @@ class CachedOperatorProfiles extends Table {
   TextColumn get role => text()();
   TextColumn get municipalityId => text().nullable()();
   TextColumn get photoPath => text().nullable()();
+  TextColumn get zonesJson =>
+      text().withDefault(const Constant('[]'))();
+  TextColumn get defaultZoneId => text().nullable()();
   DateTimeColumn get cachedAt => dateTime()();
 
   @override

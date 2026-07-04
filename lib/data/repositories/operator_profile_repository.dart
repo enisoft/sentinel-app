@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 
 import '../local/app_database.dart';
 import '../remote/api_client.dart';
 import '../../domain/models/operator_profile.dart' as domain;
+import '../../domain/models/operator_zone.dart';
 
 class OperatorProfileRepository {
   OperatorProfileRepository(this._db, this._api);
@@ -33,6 +36,8 @@ class OperatorProfileRepository {
             role: profile.role,
             municipalityId: Value(profile.municipalityId),
             photoPath: Value(profile.photoPath),
+            zonesJson: Value(jsonEncode(profile.zones.map((z) => z.toJson()).toList())),
+            defaultZoneId: Value(profile.defaultZoneId),
             cachedAt: DateTime.now().toUtc(),
           ),
         );
@@ -40,12 +45,18 @@ class OperatorProfileRepository {
   }
 
   domain.OperatorProfile _mapRow(CachedOperatorProfile row) {
+    final zones = (jsonDecode(row.zonesJson) as List<dynamic>)
+        .map((item) => OperatorZone.fromJson(item as Map<String, dynamic>))
+        .toList();
+
     return domain.OperatorProfile(
       id: row.id,
       name: row.name,
       role: row.role,
       municipalityId: row.municipalityId,
       photoPath: row.photoPath,
+      zones: zones,
+      defaultZoneId: row.defaultZoneId,
     );
   }
 }

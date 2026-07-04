@@ -39,6 +39,10 @@ void main() {
             'role': 'agente',
             'municipality_id': 'mun-1',
             'photo_path': 'avatars/x.jpg',
+            'zones': [
+              {'id': 'zona-1', 'nome': 'Manaus', 'tipo': 'municipio'},
+            ],
+            'default_zone_id': 'zona-1',
           }),
           200,
           headers: {'content-type': 'application/json'},
@@ -54,5 +58,8 @@ void main() {
     final cached = await repo.getCached();
     expect(cached?.id, 'user-1');
     expect(cached?.photoPath, 'avatars/x.jpg');
+    expect(cached?.zones, hasLength(1));
+    expect(cached?.zones.single.nome, 'Manaus');
+    expect(cached?.defaultZoneId, 'zona-1');
   });
 }
