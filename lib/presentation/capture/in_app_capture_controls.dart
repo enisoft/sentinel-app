@@ -5,6 +5,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../core/capture/video_recording_policy.dart';
 import '../../data/device/camera_permission_denied_exception.dart';
+import '../../data/device/device_camera_source.dart';
 import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
 
@@ -160,10 +161,25 @@ class _InAppCaptureControlsState extends State<InAppCaptureControls> {
     }
   }
 
-  void _onModeChanged(Set<CaptureMode> modes) {
+  Future<void> _onModeChanged(Set<CaptureMode> modes) async {
     final mode = modes.firstOrNull;
     if (mode == null || mode == _mode || _recording || _busy) return;
     setState(() => _mode = mode);
+
+    final source = widget.cameraSource;
+    if (source is! DeviceCameraSource) return;
+
+    try {
+      if (mode == CaptureMode.photo) {
+        await source.prepareForPhoto();
+      } else {
+        await source.prepareForVideo();
+      }
+    } on CameraPermissionDeniedException catch (error) {
+      widget.onError?.call(error.message);
+    } catch (error) {
+      widget.onError?.call('Falha ao ajustar qualidade da câmera: $error');
+    }
   }
 
   @override

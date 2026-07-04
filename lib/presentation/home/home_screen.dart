@@ -6,6 +6,7 @@ import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import '../capture/capture_home_screen.dart';
+import '../settings/settings_screen.dart';
 import 'occurrences_tab.dart';
 import 'tasks_tab.dart';
 
@@ -48,6 +49,14 @@ class _HomeScreenState extends State<HomeScreen> {
     await _auth.signOut();
   }
 
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => const SettingsScreen(),
+      ),
+    );
+  }
+
   Future<void> _openCapture() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -80,10 +89,16 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: widget.onRetryCatalogSync,
             ),
           IconButton(
+            key: const Key('settings_button'),
+            icon: const Icon(Icons.settings),
+            onPressed: _openSettings,
+          ),
+          IconButton(
             key: const Key('logout_button'),
             icon: const Icon(Icons.logout),
             onPressed: _onLogout,
           ),
+
         ],
       ),
       body: Column(

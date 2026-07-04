@@ -14,6 +14,7 @@ import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/presentation/capture/capture_home_screen.dart';
 import 'package:sentinel_app/presentation/home/home_screen.dart';
 import 'package:sentinel_app/presentation/home/occurrences_tab.dart';
+import 'package:sentinel_app/presentation/settings/settings_screen.dart';
 
 void main() {
   late AppDatabase db;
@@ -78,6 +79,17 @@ void main() {
 
     expect(find.byType(CaptureHomeScreen), findsOneWidget);
     expect(find.byKey(const Key('capture_button')), findsOneWidget);
+  });
+
+  testWidgets('settings button opens settings screen', (tester) async {
+    await pumpHome(tester);
+
+    await tester.tap(find.byKey(const Key('settings_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.byKey(const Key('settings_photo_hd')), findsOneWidget);
+    expect(find.byKey(const Key('settings_video_hd')), findsOneWidget);
   });
 
   testWidgets('list shows draft as não confirmada and pending as pendente',

@@ -1,4 +1,5 @@
 import 'package:get_it/get_it.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/app_config.dart';
@@ -12,6 +13,7 @@ import '../data/device/geolocator_location_source.dart';
 import '../data/fakes/fake_camera_source.dart';
 import '../data/fakes/fake_hash_service.dart';
 import '../data/fakes/fake_location_source.dart';
+import '../data/settings/capture_quality_settings.dart';
 import '../data/gateways/supabase_auth_gateway.dart';
 import '../data/gateways/sync_gateway_http.dart';
 import '../data/local/app_database.dart';
@@ -63,6 +65,8 @@ Future<void> configureDependencies() async {
 
   getIt.registerSingleton<AppConfig>(config);
 
+  await _registerCaptureQualitySettings();
+
   final db = await AppDatabase.openDefault();
   await _registerCore(db, config);
   _registerCaptureProduction();
@@ -83,6 +87,7 @@ Future<void> configureDependenciesForTesting(
   OccurrenceSyncForegroundRunner? occurrenceSyncForegroundRunner,
 }) async {
   await getIt.reset();
+  SharedPreferences.setMockInitialValues({});
 
   final testConfig = config ??
       AppConfig.fromMap({
@@ -92,6 +97,8 @@ Future<void> configureDependenciesForTesting(
       });
 
   getIt.registerSingleton<AppConfig>(testConfig);
+
+  await _registerCaptureQualitySettings();
 
   final auth = authGateway ?? _UnimplementedAuthGateway();
   getIt.registerSingleton<AuthGateway>(auth);
@@ -213,8 +220,15 @@ Future<void> _registerCore(
   }
 }
 
+Future<void> _registerCaptureQualitySettings() async {
+  if (getIt.isRegistered<CaptureQualitySettings>()) return;
+  final settings = CaptureQualitySettings();
+  await settings.load();
+  getIt.registerSingleton<CaptureQualitySettings>(settings);
+}
+
 void _registerCaptureProduction() {
-  final cameraSource = DeviceCameraSource();
+  final cameraSource = DeviceCameraSource(settings: getIt());
   getIt.registerLazySingleton<DeviceCameraSource>(() => cameraSource);
   _registerCaptureServices(
     cameraSource: cameraSource,
