@@ -1,27 +1,36 @@
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/capture/capture_mime.dart';
+import '../../core/capture/capture_resolution.dart';
 import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
+import '../settings/capture_quality_settings.dart';
 import 'camera_permission_denied_exception.dart';
 
 /// Câmera in-app com plugin oficial — preview via [controller].
-class DeviceCameraSource implements CameraSource {
-  DeviceCameraSource({Uuid? uuid}) : _uuid = uuid ?? const Uuid();
+///
+/// Notifica listeners quando o [CameraController] é recriado (troca de preset HD).
+class DeviceCameraSource extends ChangeNotifier implements CameraSource {
+  DeviceCameraSource({
+    required CaptureQualitySettings settings,
+    Uuid? uuid,
+  })  : _settings = settings,
+        _uuid = uuid ?? const Uuid();
 
-  /// ~720p — reduz bitrate/tamanho e pressão de memória do encoder em gravações longas.
-  static const ResolutionPreset captureResolution = ResolutionPreset.medium;
-
+  final CaptureQualitySettings _settings;
   final Uuid _uuid;
   CameraController? _controller;
+  ResolutionPreset? _activePreset;
   bool _initializing = false;
   bool _recordingVideo = false;
+  double? _lastZoom;
 
   CameraController? get controller => _controller;
 
@@ -30,13 +39,69 @@ class DeviceCameraSource implements CameraSource {
   @override
   bool get isRecordingVideo => _recordingVideo;
 
+  /// Aplica o preset de foto (flag [CaptureQualitySettings.photoHd]).
+  Future<void> prepareForPhoto() async {
+    await _ensureResolution(resolutionPresetForHd(_settings.photoHd));
+  }
+
+  /// Aplica o preset de vídeo (flag [CaptureQualitySettings.videoHd]).
+  Future<void> prepareForVideo() async {
+    await _ensureResolution(resolutionPresetForHd(_settings.videoHd));
+  }
+
+  /// Zoom mínimo do sensor ativo (ex.: 0.5 com ultrawide).
+  Future<double> getMinZoomLevel() async {
+    final controller = _requireInitializedController();
+    return controller.getMinZoomLevel();
+  }
+
+  /// Zoom máximo do sensor ativo (digital; G86 sem tele dedicada).
+  Future<double> getMaxZoomLevel() async {
+    final controller = _requireInitializedController();
+    return controller.getMaxZoomLevel();
+  }
+
+  /// Aplica zoom instantâneo (níveis discretos — ENI-58).
+  Future<void> setZoomLevel(double zoom) async {
+    final controller = _requireInitializedController();
+    final minZoom = await controller.getMinZoomLevel();
+    final maxZoom = await controller.getMaxZoomLevel();
+    final clamped = zoom.clamp(minZoom, maxZoom);
+    await controller.setZoomLevel(clamped);
+    _lastZoom = clamped;
+  }
+
+  CameraController _requireInitializedController() {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) {
+      throw CameraPermissionDeniedException();
+    }
+    return controller;
+  }
+
+  /// Abre a câmera no preset de foto (modo inicial da UI).
   Future<void> initialize() async {
-    if (_controller?.value.isInitialized == true) return;
+    await prepareForPhoto();
+  }
+
+  Future<void> _ensureResolution(ResolutionPreset preset) async {
+    if (_controller?.value.isInitialized == true && _activePreset == preset) {
+      return;
+    }
+
     if (_initializing) {
       while (_initializing) {
         await Future<void>.delayed(const Duration(milliseconds: 50));
       }
-      return;
+      if (_controller?.value.isInitialized == true && _activePreset == preset) {
+        return;
+      }
+    }
+
+    if (_recordingVideo) {
+      throw StateError(
+        'Não é possível alterar a resolução durante gravação de vídeo.',
+      );
     }
 
     _initializing = true;
@@ -58,15 +123,38 @@ class DeviceCameraSource implements CameraSource {
         orElse: () => cameras.first,
       );
 
+      final previousZoom = _lastZoom;
+      final oldController = _controller;
+      _controller = null;
+      _activePreset = null;
+      if (oldController != null) {
+        await oldController.dispose();
+      }
+
       final controller = CameraController(
         back,
-        captureResolution,
+        preset,
         enableAudio: true,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
 
       await controller.initialize();
       _controller = controller;
+      _activePreset = preset;
+
+      if (previousZoom != null) {
+        try {
+          final minZoom = await controller.getMinZoomLevel();
+          final maxZoom = await controller.getMaxZoomLevel();
+          final clamped = previousZoom.clamp(minZoom, maxZoom);
+          await controller.setZoomLevel(clamped);
+          _lastZoom = clamped;
+        } catch (_) {
+          // Best-effort — zoom volta ao padrão do sensor.
+        }
+      }
+
+      notifyListeners();
     } finally {
       _initializing = false;
     }
@@ -74,9 +162,7 @@ class DeviceCameraSource implements CameraSource {
 
   @override
   Future<CaptureResult> capture() async {
-    if (!isInitialized) {
-      await initialize();
-    }
+    await prepareForPhoto();
 
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) {
@@ -105,9 +191,7 @@ class DeviceCameraSource implements CameraSource {
 
   @override
   Future<void> startVideoRecording() async {
-    if (!isInitialized) {
-      await initialize();
-    }
+    await prepareForVideo();
 
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) {

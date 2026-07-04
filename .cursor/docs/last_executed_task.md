@@ -1,37 +1,32 @@
-# Última tarefa executada — ENI-57: home com 2 abas + FAB de captura
+# Última tarefa executada — ENI-58: zoom da câmera por cliques (níveis)
 
 **Status: implementado** — verificação manual G86 pendente
 
-**Linear:** ENI-57 — nova home com abas Ocorrências / Tasks e captura via FAB
+**Linear:** ENI-58 — zoom por níveis no preview (foto e vídeo), sem gesto contínuo
 
-Data: 2026-07-03
+Data: 2026-07-04
 
 ---
 
 ## Escopo
 
-Navegação/UI apenas. Home deixa de ser a câmera: abas + FAB abrem o fluxo pega-tudo (ENI-60). Badge e “Sincronizar agora” (ENI-49) migram para a aba Ocorrências.
+Botões de nível de zoom no preview in-app (`camera`), fluxo pega-tudo (ENI-60). Troca instantânea via `setZoomLevel`; sem pinça/scroll.
 
-**Fora de escopo:** Tasks de verdade (E7/inbox), zoom (ENI-58), loading (ENI-59), contrato/persistência/auth.
+**Fora de escopo:** hash/GPS/pipeline/limite de vídeo/wakelock (ENI-50/52/60 intactos); auditoria de integridade.
 
 ---
 
-## Fluxo
-
-```
-Login → bootstrap → Home (aba Ocorrências)
-  → FAB "Adicionar ocorrência" → captura pega-tudo (ENI-60)
-       → Concluir → form → Confirmar → pop para lista (ocorrência aparece)
-  → Aba Tasks → placeholder "Em breve" (sem API)
-```
+## Comportamento
 
 | Elemento | Comportamento |
 |----------|----------------|
-| Aba Ocorrências | Lista local Drift (draft + pending + synced); badge pendentes; botão sync (desabilitado com fila vazia) |
-| Rascunho na lista | Rótulo "Não confirmada"; **não** entra no badge de pendentes (ENI-44) |
-| Pendente / sincronizada | "Pendente" / "Sincronizada" (e Falha / Sincronizando conforme `SyncState`) |
-| Aba Tasks | Placeholder "Em breve" — sem popular, sem chamar API |
-| FAB | Abre `CaptureHomeScreen`; ao confirmar, volta à lista e recarrega |
+| Níveis-alvo | 0.5x (só se ultrawide / `min ≤ 0.5`), 1x, 2x, 4x (só se `max ≥ 4`) |
+| Device | `getMinZoomLevel()` / `getMaxZoomLevel()` do `CameraController` |
+| UI | Botões no preview; nível ativo destacado (círculo branco) |
+| Sessão | Nível persiste entre clipes na mesma tela de captura (não reseta) |
+| Gesto | Nenhum — só clique no nível |
+
+G86: sem tele dedicada; 4x é zoom digital se o max permitir.
 
 ---
 
@@ -39,32 +34,28 @@ Login → bootstrap → Home (aba Ocorrências)
 
 | Arquivo | Mudança |
 |---------|---------|
-| `lib/presentation/home/home_screen.dart` | Shell: BottomNavigationBar (Ocorrências / Tasks), FAB, logout, aviso de catálogo |
-| `lib/presentation/home/occurrences_tab.dart` | Lista local + badge/botão sync migrados da capture-home |
-| `lib/presentation/home/tasks_tab.dart` | Placeholder "Em breve" |
-| `lib/presentation/capture/capture_home_screen.dart` | Só fluxo de captura; sem badge/sync/logout; pop ao confirmar (se `canPop`) |
-| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | Destino pós-bootstrap: `HomeScreen` (não câmera) |
-| `lib/data/repositories/occurrence_repository.dart` | `listAll()` — ocorrências locais por `createdLocalAt` desc |
-| `test/presentation/home/home_screen_test.dart` | Abas, FAB, lista/rótulos, badge sem contar draft |
-| `test/presentation/capture/capture_flow_test.dart` | Sync na home; FAB → captura → lista |
-| `test/presentation/bootstrap/app_bootstrap_screen_test.dart` | Bootstrap cai na home, não na câmera |
+| `lib/core/capture/camera_zoom_levels.dart` | Mapeamento min/max → níveis; `CameraZoomSession` (select + persistência) |
+| `lib/data/device/device_camera_source.dart` | `getMinZoomLevel` / `getMaxZoomLevel` / `setZoomLevel` |
+| `lib/presentation/capture/camera_zoom_controls.dart` | Botões de nível no preview |
+| `lib/presentation/capture/in_app_camera_preview.dart` | Overlay dos controles de zoom |
+| `test/core/capture/camera_zoom_levels_test.dart` | Mapeamento + select → applyZoom |
+| `test/presentation/capture/camera_zoom_controls_test.dart` | UI: níveis, tap chama setZoomLevel |
 
 ---
 
-## Testes (`flutter test` — 134 passed)
+## Testes (`flutter test` — 152 passed)
 
 ```
-00:08 +134: All tests passed!
+00:07 +152: All tests passed!
 ```
 
-Cenários ENI-57:
+Cenários ENI-58:
 
-- abas: Ocorrências (lista/sync) e Tasks ("Em breve")
-- FAB abre captura pega-tudo
-- confirmar via FAB volta à lista com badge e item "Pendente"
-- rascunho na lista como "Não confirmada", fora do badge (ENI-44)
-- botão sync desabilitado com fila vazia; manual sync limpa badge
-- bootstrap → `home_screen`, sem `capture_button`
+- mapeamento respeita min/max (sem forçar 0.5x / 4x fora do range)
+- `CameraZoomSession.select` chama `applyZoom` com o nível correspondente
+- nível ativo persiste na sessão entre seleções
+- widget: tap em 2x / 0.5x chama `setZoomLevel` correspondente
+- controles ocultos quando há um único nível
 
 ---
 
@@ -72,31 +63,27 @@ Cenários ENI-57:
 
 **Novos:**
 
-- `lib/presentation/home/home_screen.dart`
-- `lib/presentation/home/occurrences_tab.dart`
-- `lib/presentation/home/tasks_tab.dart`
-- `test/presentation/home/home_screen_test.dart`
+- `lib/core/capture/camera_zoom_levels.dart`
+- `lib/presentation/capture/camera_zoom_controls.dart`
+- `test/core/capture/camera_zoom_levels_test.dart`
+- `test/presentation/capture/camera_zoom_controls_test.dart`
 
 **Alterados:**
 
-- `lib/presentation/capture/capture_home_screen.dart`
-- `lib/presentation/bootstrap/app_bootstrap_screen.dart`
-- `lib/data/repositories/occurrence_repository.dart`
-- `test/presentation/capture/capture_flow_test.dart`
-- `test/presentation/bootstrap/app_bootstrap_screen_test.dart`
+- `lib/data/device/device_camera_source.dart`
+- `lib/presentation/capture/in_app_camera_preview.dart`
 - `.cursor/docs/last_executed_task.md`
 
 ---
 
 ## Verificação manual G86 (aceite — pendente)
 
-1. Login → cai na home (aba Ocorrências, **não** na câmera)
-2. FAB → captura pega-tudo → concluir → volta pra lista, ocorrência aparece
-3. Aba Tasks → "Em breve"
-4. Badge de pendentes + botão sync na aba Ocorrências; botão desabilitado com fila vazia
+1. Preview mostra botões de nível; tocar alterna o zoom na hora (foto e vídeo)
+2. Gravar vídeo em 2x → zoom mantém durante a gravação
+3. Capturas em diferentes zooms entram no carrinho normalmente (pega-tudo intacto)
 
 ---
 
 ## Auditoria
 
-**Não escalada.** Navegação/UI; não toca contrato, persistência de sync nem auth. Report + testes + device bastam.
+**Não escalada.** UI/câmera; não toca integridade nem contrato. Report + testes + device bastam.

@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../data/device/camera_permission_denied_exception.dart';
 import '../../data/device/device_camera_source.dart';
+import 'camera_zoom_controls.dart';
 
 /// Preview da câmera in-app — inicializa permissão e [DeviceCameraSource].
 class InAppCameraPreview extends StatefulWidget {
@@ -30,7 +31,27 @@ class _InAppCameraPreviewState extends State<InAppCameraPreview> {
   @override
   void initState() {
     super.initState();
+    widget.cameraSource.addListener(_onCameraChanged);
     _initCamera();
+  }
+
+  @override
+  void didUpdateWidget(InAppCameraPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.cameraSource != widget.cameraSource) {
+      oldWidget.cameraSource.removeListener(_onCameraChanged);
+      widget.cameraSource.addListener(_onCameraChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.cameraSource.removeListener(_onCameraChanged);
+    super.dispose();
+  }
+
+  void _onCameraChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _initCamera() async {
@@ -118,6 +139,22 @@ class _InAppCameraPreviewState extends State<InAppCameraPreview> {
       );
     }
 
-    return CameraPreview(controller);
+    // Zoom acima dos controles de captura (shutter / modo foto-vídeo).
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CameraPreview(controller),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 228,
+          child: CameraZoomControls(
+            getMinZoomLevel: widget.cameraSource.getMinZoomLevel,
+            getMaxZoomLevel: widget.cameraSource.getMaxZoomLevel,
+            setZoomLevel: widget.cameraSource.setZoomLevel,
+          ),
+        ),
+      ],
+    );
   }
 }
