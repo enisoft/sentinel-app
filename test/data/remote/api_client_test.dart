@@ -275,5 +275,191 @@ void main() {
         ),
       );
     });
+
+    test('getMessages parses inbox list with Portuguese fields', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(token: 'jwt-1'),
+        httpClient: MockClient((request) async {
+          expect(request.url.path, '/api/v1/messages');
+          return http.Response(
+            jsonEncode({
+              'data': [
+                {
+                  'id': 'rec-1',
+                  'estado': 'enviada',
+                  'message': {
+                    'id': 'msg-1',
+                    'titulo': 'Aviso',
+                    'corpo': 'Corpo',
+                    'tipo': 'informe',
+                    'autor': 'Coordenador',
+                    'created_at': '2026-07-04T12:00:00Z',
+                  },
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final items = await client.getMessages();
+      expect(items, hasLength(1));
+      expect(items.single.id, 'msg-1');
+      expect(items.single.title, 'Aviso');
+      expect(items.single.body, 'Corpo');
+    });
+
+    test('getMessages parses inbox list', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(token: 'jwt-1'),
+        httpClient: MockClient((request) async {
+          expect(request.url.path, '/api/v1/messages');
+          return http.Response(
+            jsonEncode({
+              'data': [
+                {
+                  'id': 'msg-1',
+                  'author': 'Coordenador',
+                  'title': 'Aviso',
+                  'body': 'Corpo',
+                  'type': 'informe',
+                  'estado': 'enviada',
+                  'created_at': '2026-07-04T12:00:00Z',
+                },
+                {
+                  'id': 'msg-2',
+                  'author': 'Coordenador',
+                  'title': 'Patrulha',
+                  'body': 'Ir ao ponto X',
+                  'type': 'tarefa',
+                  'estado': 'lida',
+                  'created_at': '2026-07-03T10:00:00Z',
+                },
+              ],
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final items = await client.getMessages();
+      expect(items, hasLength(2));
+      expect(items.first.id, 'msg-1');
+      expect(items.last.isTarefa, isTrue);
+    });
+
+    test('postMessageRead parses updated message', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/v1/messages/msg-1/read');
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'id': 'msg-1',
+                'author': 'Coord',
+                'title': 'T',
+                'body': 'B',
+                'type': 'informe',
+                'estado': 'lida',
+                'created_at': '2026-07-04T12:00:00Z',
+                'read_at': '2026-07-04T13:00:00Z',
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final updated = await client.postMessageRead('msg-1');
+      expect(updated.estado, 'lida');
+      expect(updated.readAt, isNotNull);
+    });
+
+    test('postMessageAccept posts to accept endpoint', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/api/v1/messages/task-1/accept');
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'id': 'task-1',
+                'author': 'Coord',
+                'title': 'Tarefa',
+                'body': 'Fazer X',
+                'type': 'tarefa',
+                'estado': 'aceita',
+                'created_at': '2026-07-04T12:00:00Z',
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final updated = await client.postMessageAccept('task-1');
+      expect(updated.estado, 'aceita');
+      expect(updated.isTarefa, isTrue);
+    });
+
+    test('postMessageComplete posts to complete endpoint', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((request) async {
+          expect(request.url.path, '/api/v1/messages/task-1/complete');
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'id': 'task-1',
+                'type': 'tarefa',
+                'estado': 'concluida',
+                'created_at': '2026-07-04T12:00:00Z',
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      expect((await client.postMessageComplete('task-1')).estado, 'concluida');
+    });
+
+    test('postMessageReject posts to reject endpoint', () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((request) async {
+          expect(request.url.path, '/api/v1/messages/task-1/reject');
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'id': 'task-1',
+                'type': 'tarefa',
+                'estado': 'recusada',
+                'created_at': '2026-07-04T12:00:00Z',
+              },
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      expect((await client.postMessageReject('task-1')).estado, 'recusada');
+    });
   });
 }

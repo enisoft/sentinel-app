@@ -1,15 +1,24 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:sentinel_app/app/di.dart';
 import 'package:sentinel_app/core/capture/occurrence_lifecycle_status.dart';
+import 'package:sentinel_app/core/config/app_config.dart';
+import 'package:sentinel_app/core/messages/message_recipient_state.dart';
 import 'package:sentinel_app/core/sync/sync_state.dart';
+import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
 import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
 import 'package:sentinel_app/data/fakes/fake_location_source.dart';
 import 'package:sentinel_app/data/fakes/fake_media_uploader.dart';
 import 'package:sentinel_app/data/fakes/fake_sync_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
+import 'package:sentinel_app/data/remote/api_client.dart';
+import 'package:sentinel_app/data/repositories/message_repository.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/presentation/capture/capture_home_screen.dart';
 import 'package:sentinel_app/presentation/capture/occurrence_draft_form_screen.dart';
@@ -18,20 +27,45 @@ import 'package:sentinel_app/presentation/home/occurrence_detail_screen.dart';
 import 'package:sentinel_app/presentation/home/occurrences_tab.dart';
 import 'package:sentinel_app/presentation/settings/settings_screen.dart';
 
+ApiClient _messagesApiClient() {
+  return ApiClient(
+    config: AppConfig.fromMap({
+      'SUPABASE_URL': 'http://localhost:54321',
+      'SUPABASE_ANON_KEY': 'anon',
+      'API_BASE_URL': 'http://localhost:8000/api/v1',
+    }),
+    authGateway: FakeAuthGateway(),
+    httpClient: MockClient((request) async {
+      if (request.url.path.endsWith('/messages') && request.method == 'GET') {
+        return http.Response(
+          jsonEncode({'data': []}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      return http.Response('not found', 404);
+    }),
+  );
+}
+
 void main() {
   late AppDatabase db;
   late OccurrenceRepository occurrenceRepo;
+  late MessageRepository messageRepo;
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
+    final apiClient = _messagesApiClient();
     await configureDependenciesForTesting(
       db,
       cameraSource: FakeCameraSource(),
       locationSource: FakeLocationSource(),
       hashService: FakeHashService(),
       syncGateway: FakeSyncGateway(mediaUploader: FakeMediaUploader()),
+      apiClient: apiClient,
     );
     occurrenceRepo = getIt<OccurrenceRepository>();
+    messageRepo = getIt<MessageRepository>();
   });
 
   tearDown(() async {
@@ -53,7 +87,7 @@ void main() {
     expect(find.byKey(const Key('add_occurrence_fab')), findsOneWidget);
     expect(find.text('Adicionar ocorrência'), findsOneWidget);
     expect(find.byKey(const Key('occurrences_empty')), findsOneWidget);
-    expect(find.byKey(const Key('tasks_placeholder')), findsNothing);
+    expect(find.byKey(const Key('messages_empty')), findsNothing);
     expect(find.byKey(const Key('sync_now_button')), findsOneWidget);
     expect(find.byKey(const Key('pending_sync_badge')), findsNothing);
     expect(
@@ -62,15 +96,62 @@ void main() {
     );
   });
 
-  testWidgets('tasks tab shows placeholder without API calls', (tester) async {
+  testWidgets('messages tab shows empty list', (tester) async {
     await pumpHome(tester);
 
-    await tester.tap(find.text('Tasks'));
+    await tester.tap(find.text('Mensagens'));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('tasks_placeholder')), findsOneWidget);
-    expect(find.text('Em breve'), findsOneWidget);
+    expect(find.byKey(const Key('messages_empty')), findsOneWidget);
+    expect(find.text('Nenhuma mensagem'), findsOneWidget);
     expect(find.byKey(const Key('occurrences_empty')), findsNothing);
+  });
+
+  testWidgets('messages tab badge shows unread count', (tester) async {
+    await messageRepo.refresh();
+    final apiWithMessages = ApiClient(
+      config: AppConfig.fromMap({
+        'SUPABASE_URL': 'http://localhost:54321',
+        'SUPABASE_ANON_KEY': 'anon',
+        'API_BASE_URL': 'http://localhost:8000/api/v1',
+      }),
+      authGateway: FakeAuthGateway(),
+      httpClient: MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'data': [
+              {
+                'id': 'unread-1',
+                'author': 'Coord',
+                'title': 'Nova',
+                'body': 'Corpo',
+                'type': 'informe',
+                'estado': MessageRecipientState.enviada,
+                'created_at': '2026-07-04T12:00:00Z',
+              },
+            ],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    final repo = MessageRepository(db, apiWithMessages);
+    await repo.refresh();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(messageRepository: repo),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final badge = tester.widget<Badge>(find.byKey(const Key('messages_tab_badge')));
+    expect(badge.isLabelVisible, isTrue);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('messages_tab_badge_count'))).data,
+      '1',
+    );
   });
 
   testWidgets('FAB opens capture flow', (tester) async {
@@ -168,8 +249,8 @@ void main() {
       '1',
     );
 
-    // Badge do menu permanece visível na aba Tasks.
-    await tester.tap(find.text('Tasks'));
+    // Badge de ocorrências permanece visível na aba Mensagens.
+    await tester.tap(find.text('Mensagens'));
     await tester.pumpAndSettle();
     expect(
       tester.widget<Badge>(find.byKey(const Key('occurrences_tab_badge'))).isLabelVisible,

@@ -1,8 +1,15 @@
+import 'dart:convert';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:sentinel_app/app/di.dart';
+import 'package:sentinel_app/core/config/app_config.dart';
 import 'package:sentinel_app/core/sync/sync_state.dart';
+import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
+import 'package:sentinel_app/data/remote/api_client.dart';
 import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
 import 'package:sentinel_app/data/fakes/fake_location_source.dart';
@@ -41,6 +48,24 @@ void main() {
       locationSource: FakeLocationSource(),
       hashService: FakeHashService(),
       syncGateway: fakeGateway,
+      apiClient: ApiClient(
+        config: AppConfig.fromMap({
+          'SUPABASE_URL': 'http://localhost:54321',
+          'SUPABASE_ANON_KEY': 'anon',
+          'API_BASE_URL': 'http://localhost:8000/api/v1',
+        }),
+        authGateway: FakeAuthGateway(),
+        httpClient: MockClient((request) async {
+          if (request.url.path.endsWith('/messages')) {
+            return http.Response(
+              jsonEncode({'data': []}),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
+          return http.Response('not found', 404);
+        }),
+      ),
     );
     fakeMediaUploader.occurrenceRepository = getIt<OccurrenceRepository>();
     captureService = getIt<CaptureOccurrenceService>();

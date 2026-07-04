@@ -21,6 +21,7 @@ import '../data/remote/api_client.dart';
 import '../data/remote/tus_media_uploader.dart';
 import '../data/repositories/catalog_repository.dart';
 import '../data/repositories/check_in_repository.dart';
+import '../data/repositories/message_repository.dart';
 import '../data/repositories/occurrence_repository.dart';
 import '../data/repositories/operator_profile_repository.dart';
 import '../data/repositories/sync_queue_repository.dart';
@@ -136,6 +137,7 @@ Future<void> _registerCore(
   getIt.registerLazySingleton(() => CheckInRepository(getIt()));
   getIt.registerLazySingleton(() => SyncQueueRepository(getIt()));
   getIt.registerLazySingleton(() => CatalogRepository(getIt()));
+  getIt.registerLazySingleton(() => MessageRepository(getIt(), getIt()));
 
   if (!getIt.isRegistered<AuthGateway>()) {
     getIt.registerLazySingleton<AuthGateway>(

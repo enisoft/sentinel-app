@@ -82,6 +82,13 @@ void main() {
         if (path.contains('/catalog/')) {
           throw http.ClientException('Connection refused');
         }
+        if (path.endsWith('/messages')) {
+          return http.Response(
+            jsonEncode({'data': []}),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
         return http.Response('', 404);
       }),
     );
@@ -188,6 +195,13 @@ void main() {
               headers: {'content-type': 'application/json'},
             );
           }
+          if (path.endsWith('/messages')) {
+            return http.Response(
+              jsonEncode({'data': []}),
+              200,
+              headers: {'content-type': 'application/json'},
+            );
+          }
           return http.Response('', 404);
         }),
       ),
@@ -237,6 +251,13 @@ void main() {
               'items': [],
               'deleted_ids': [],
             }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }
+        if (path.endsWith('/messages')) {
+          return http.Response(
+            jsonEncode({'data': []}),
             200,
             headers: {'content-type': 'application/json'},
           );

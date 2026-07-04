@@ -9,6 +9,8 @@ import '../../domain/gateways/auth_gateway.dart';
 import '../../domain/models/operator_profile.dart';
 import 'api_exception.dart';
 import 'catalog_delta_response.dart';
+import 'messages_list_response.dart';
+import '../../domain/models/inbox_message.dart';
 
 class ApiClient {
   ApiClient({
@@ -44,6 +46,35 @@ class ApiClient {
 
   Future<CatalogDeltaResponse> getCatalogZones({String? updatedSince}) =>
       _getCatalog('zones', updatedSince);
+
+  Future<List<InboxMessage>> getMessages() async {
+    final response = await _get('/messages');
+    return MessagesListResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    ).items;
+  }
+
+  Future<InboxMessage> postMessageRead(String messageId) =>
+      _postMessageAction(messageId, 'read');
+
+  Future<InboxMessage> postMessageAccept(String messageId) =>
+      _postMessageAction(messageId, 'accept');
+
+  Future<InboxMessage> postMessageComplete(String messageId) =>
+      _postMessageAction(messageId, 'complete');
+
+  Future<InboxMessage> postMessageReject(String messageId) =>
+      _postMessageAction(messageId, 'reject');
+
+  Future<InboxMessage> _postMessageAction(
+    String messageId,
+    String action,
+  ) async {
+    final response = await _post('/messages/$messageId/$action', const {});
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final data = decoded['data'] as Map<String, dynamic>? ?? decoded;
+    return InboxMessage.fromJson(data);
+  }
 
   Future<List<String>> postOccurrencesSync(Map<String, dynamic> body) async {
     final response = await _post('/occurrences/sync', body);

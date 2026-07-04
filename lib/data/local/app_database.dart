@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/sync/sync_phase.dart';
 import '../../core/sync/sync_state.dart';
 import 'converters/sync_enums.dart';
+import 'tables/cached_messages.dart';
 import 'tables/cached_operator_profiles.dart';
 import 'tables/catalog_sync_cursors.dart';
 import 'tables/categories.dart';
@@ -24,6 +25,7 @@ part 'app_database.g.dart';
   Occurrences,
   OccurrenceMedia,
   CheckIns,
+  CachedMessages,
   CachedOperatorProfiles,
   Categories,
   Observables,
@@ -37,7 +39,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,6 +73,9 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 6) {
             await m.createTable(catalogZones);
+          }
+          if (from < 7) {
+            await m.createTable(cachedMessages);
           }
         },
       );

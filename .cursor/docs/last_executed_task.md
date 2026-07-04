@@ -1,6 +1,6 @@
-# ENI-78 — Retomar rascunho + lista navegável
+# Aba Mensagens — inbox + testes
 
-**Tipo:** implementação FE (UI/navegação sobre dados locais)  
+**Tipo:** implementação FE (API + cache local + UI)  
 **Data:** 2026-07-04  
 **Branch:** working tree
 
@@ -8,47 +8,35 @@
 
 ## Resumo
 
-Lista de ocorrências (aba Ocorrências, ENI-57) agora é **navegável**: toque em rascunho abre o form editável; toque em confirmada/sincronizada abre detalhes read-only. O form **reidrata** categoria, observável, nota e zona ao reabrir um rascunho existente (além de mídias e zonas do operador).
+Substituída a aba **Tasks** (placeholder) por **Mensagens**: lista estilo ocorrências com status do destinatário, destaque visual para **tarefas**, badge de não lidas, cache Drift offline e detalhe com ações (`read` / `accept` / `reject` / `complete`) conforme tipo e transições da API.
+
+**Detecção de novas mensagens:** polling a cada 60s só com a aba Mensagens aberta; refresh ao entrar na aba, ao abrir a home e ao voltar da captura; pull-to-refresh manual. Cache local exibe a última lista mesmo offline.
 
 ---
 
 ## Implementação
 
-### 1. Lista navegável (`occurrences_tab.dart`)
+### 1. Camada de dados
 
-| Comportamento | Destino |
-|---------------|---------|
-| Toque em **RASCUNHO** (`status = draft`) | `OccurrenceDraftFormScreen(occurrenceId)` |
-| Toque em **CONFIRMADA** / sincronizada | `OccurrenceDetailScreen(occurrenceId)` read-only |
+| Peça | Papel |
+|------|-------|
+| `GET /messages` + `POST .../read\|accept\|complete\|reject` | `ApiClient` |
+| `CachedMessages` (Drift schema v7) | cache local |
+| `MessageRepository` | fetch, upsert, `unreadCount`, ações |
+| `InboxMessage` / `MessageRecipientState` / `MessageType` | modelos e rótulos |
 
-**Distinção visual:**
-- Rascunho: ícone `edit_note`, badge âmbar `Rascunho · {id6}`
-- Confirmada: ícone `check_circle_outline`, badge cinza com id curto
-- Recarrega lista ao voltar de qualquer tela (`_load()` após `Navigator.pop`)
+### 2. UI
 
-### 2. Reidratação do form (`occurrence_draft_form_screen.dart`)
+| Tela | Comportamento |
+|------|---------------|
+| `MessagesTab` | lista + status à direita; tarefa com fundo índigo e badge |
+| `MessageDetailScreen` | abre informe nova → `read` automático; tarefa lida → aceitar/recusar; aceita → concluir |
+| `HomeScreen` | aba renomeada; badge `enviada` na bottom nav |
 
-Novo `_loadDraft()` unifica carga de:
-- mídias (`listDraftMedia`)
-- zonas do operador (`/me` cache)
-- **campos salvos** do registro Drift: `categoryId`, `observableId`, `zonaId`, `description` (nota)
+### 3. Transições respeitadas
 
-Correção: dropdowns de categoria/observável usam `value:` (não `initialValue:`) para refletir estado após carga assíncrona.
-
-`_syncDraft()` só dispara default de zona em rascunho **novo** (sem `zonaId` salvo).
-
-### 3. Detalhes read-only (`occurrence_detail_screen.dart` — novo)
-
-Exibe sem edição:
-- mídias (thumbnails horizontais)
-- estado de sync (`occurrenceListStatusLabel`)
-- data/hora, zona, categoria, observável, nota, id curto
-
-Resolve nomes de catálogo e zona via `CatalogRepository` + cache de `/me`.
-
-### 4. Retomar rascunho
-
-Fluxo ENI-60 mantido: adicionar/remover mídia no form → Confirmar → `status = pending` → fila de sync.
+- **Informe:** enviada → lida  
+- **Tarefa:** enviada → lida → aceita → concluída \| recusada  
 
 ---
 
@@ -56,11 +44,30 @@ Fluxo ENI-60 mantido: adicionar/remover mídia no form → Confirmar → `status
 
 | Arquivo | Ação |
 |---------|------|
-| `lib/presentation/capture/occurrence_draft_form_screen.dart` | modificado — `_loadDraft()`, `OccurrenceRepository` injetável |
-| `lib/presentation/home/occurrences_tab.dart` | modificado — navegação + visual rascunho vs confirmada |
-| `lib/presentation/home/occurrence_detail_screen.dart` | **novo** — detalhes read-only |
-| `test/presentation/capture/occurrence_draft_resume_test.dart` | **novo** — reidratação + confirm enfileira |
-| `test/presentation/home/home_screen_test.dart` | modificado — navegação lista + badge rascunho |
+| `lib/core/messages/message_type.dart` | **novo** |
+| `lib/core/messages/message_recipient_state.dart` | **novo** |
+| `lib/domain/models/inbox_message.dart` | **novo** |
+| `lib/data/remote/messages_list_response.dart` | **novo** |
+| `lib/data/local/tables/cached_messages.dart` | **novo** |
+| `lib/data/repositories/message_repository.dart` | **novo** |
+| `lib/presentation/home/messages_tab.dart` | **novo** |
+| `lib/presentation/home/message_detail_screen.dart` | **novo** |
+| `lib/presentation/home/home_screen.dart` | modificado — aba Mensagens + badge |
+| `lib/data/remote/api_client.dart` | modificado — endpoints mensagens |
+| `lib/data/local/app_database.dart` | modificado — schema v7 |
+| `lib/app/di.dart` | modificado — `MessageRepository` |
+| `lib/presentation/home/tasks_tab.dart` | removido |
+| `test/support/message_test_helpers.dart` | **novo** — fixtures compartilhados |
+| `test/core/messages/message_recipient_state_test.dart` | **novo** |
+| `test/domain/models/inbox_message_test.dart` | **novo** |
+| `test/data/remote/messages_list_response_test.dart` | **novo** |
+| `test/data/repositories/message_repository_test.dart` | **novo** |
+| `test/presentation/home/messages_tab_test.dart` | **novo** |
+| `test/presentation/home/message_detail_screen_test.dart` | **novo** |
+| `test/data/remote/api_client_test.dart` | modificado — GET/POST mensagens |
+| `test/presentation/home/home_screen_test.dart` | modificado — aba Mensagens + badge |
+| `test/presentation/bootstrap/app_bootstrap_screen_test.dart` | modificado — mock `/messages` |
+| `test/presentation/capture/capture_flow_test.dart` | modificado — mock `/messages` |
 
 ---
 
@@ -68,31 +75,36 @@ Fluxo ENI-60 mantido: adicionar/remover mídia no form → Confirmar → `status
 
 ```
 flutter test
-00:07 +170: All tests passed!
+00:09 +199: All tests passed!
 ```
 
-| Teste | Verifica |
-|-------|----------|
-| `occurrence_draft_resume_test` — repopulates | categoria, observável, nota, zona, mídias ao reabrir |
-| `occurrence_draft_resume_test` — confirm enqueues | retomar → confirmar → `pending` + fila |
-| `home_screen_test` — tap draft/synced | roteia form vs detalhes read-only |
-| Suite completa | 170 testes verdes (+3 novos, baseline anterior 167) |
+| Arquivo | Verifica |
+|---------|----------|
+| `message_recipient_state_test` | `isUnread`, `listLabel`, fallback |
+| `inbox_message_test` | `fromJson`, defaults, `copyWith` |
+| `messages_list_response_test` | envelope `data` list e `data.items` |
+| `message_repository_test` | refresh/ordem, replace cache, unreadCount, read/accept/reject/complete |
+| `api_client_test` | GET messages, POST read/accept/complete/reject |
+| `messages_tab_test` | vazio, lista+tarefa+status, tap → detalhe |
+| `message_detail_screen_test` | auto-read informe, ações tarefa (aceitar → concluir) |
+| `home_screen_test` | aba vazia, badge não lidas |
+| Suite completa | **199** testes verdes (+22 novos, baseline anterior 177) |
 
 ---
 
 ## Verificação manual (device G86)
 
-1. Capturar 2 mídias + categoria/observável + nota → **SAIR** sem concluir.
-2. Abrir na lista → form com **TUDO** (mídias + categoria + observável + nota + zona).
-3. Adicionar 1 mídia → concluir → sincronizar → Postgres com 3 mídias e campos corretos.
-4. Abrir ocorrência sincronizada → detalhes read-only (sem botão Confirmar).
+1. Login → aba **Mensagens** carrega lista (ou “Nenhuma mensagem”).
+2. Comando envia **informe** → aparece como **Nova**; badge na aba; ao abrir → **Lida**.
+3. Comando envia **tarefa** → linha destacada (índigo); abrir → aceitar/recusar; aceita → concluir.
+4. Modo avião com cache → lista anterior visível; pull-to-refresh mostra erro sem apagar cache.
 
 ---
 
 ## AUDITORIA
 
-Não exigida — UI/navegação sobre dados locais; não altera contrato/sync/auth.
+Não exigida — feature read-mostly inbound; não altera sync de ocorrências nem auth.
 
 ---
 
-*Implementação ENI-78 concluída.*
+*Implementação aba Mensagens + suite de testes concluída.*

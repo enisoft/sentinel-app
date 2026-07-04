@@ -2,21 +2,23 @@ import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
+import '../../data/repositories/message_repository.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import '../capture/capture_home_screen.dart';
 import '../settings/settings_screen.dart';
+import 'messages_tab.dart';
 import 'occurrences_tab.dart';
-import 'tasks_tab.dart';
 
-/// Home com abas Ocorrências / Tasks e FAB de captura (ENI-57).
+/// Home com abas Ocorrências / Mensagens e FAB de captura (ENI-57).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.authGateway,
     this.syncCoordinator,
     this.syncForegroundRunner,
+    this.messageRepository,
     this.catalogSyncWarning,
     this.onRetryCatalogSync,
   });
@@ -24,6 +26,7 @@ class HomeScreen extends StatefulWidget {
   final AuthGateway? authGateway;
   final OccurrenceSyncCoordinator? syncCoordinator;
   final OccurrenceSyncForegroundRunner? syncForegroundRunner;
+  final MessageRepository? messageRepository;
   final String? catalogSyncWarning;
   final VoidCallback? onRetryCatalogSync;
 
@@ -36,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _occurrencesRefreshToken = 0;
   late final AuthGateway _auth;
   late final OccurrenceSyncCoordinator _syncCoordinator;
+  late final MessageRepository _messageRepository;
 
   @override
   void initState() {
@@ -43,6 +47,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _auth = widget.authGateway ?? getIt<AuthGateway>();
     _syncCoordinator =
         widget.syncCoordinator ?? getIt<OccurrenceSyncCoordinator>();
+    _messageRepository =
+        widget.messageRepository ?? getIt<MessageRepository>();
+    _refreshMessagesSilently();
+  }
+
+  Future<void> _refreshMessagesSilently() async {
+    try {
+      await _messageRepository.refresh();
+    } on Object {
+      // Mantém cache local; badge/lista atualizam na próxima tentativa.
+    }
   }
 
   Future<void> _onLogout() async {
@@ -65,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (!mounted) return;
     setState(() => _occurrencesRefreshToken++);
+    _refreshMessagesSilently();
   }
 
   @override
@@ -78,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(
           widget.catalogSyncWarning != null
               ? 'Catálogo desatualizado'
-              : (_tabIndex == 0 ? 'Ocorrências' : 'Tasks'),
+              : (_tabIndex == 0 ? 'Ocorrências' : 'Mensagens'),
         ),
         actions: [
           if (widget.catalogSyncWarning != null &&
@@ -121,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     syncCoordinator: _syncCoordinator,
                     syncForegroundRunner: widget.syncForegroundRunner,
                   )
-                : const TasksTab(),
+                : MessagesTab(messageRepository: _messageRepository),
           ),
         ],
       ),
@@ -135,30 +151,48 @@ class _HomeScreenState extends State<HomeScreen> {
         valueListenable: _syncCoordinator.state,
         builder: (context, syncState, _) {
           final pendingCount = syncState.pendingCount;
-          return BottomNavigationBar(
-            key: const Key('home_bottom_nav'),
-            currentIndex: _tabIndex,
-            onTap: (index) => setState(() => _tabIndex = index),
-            items: [
-              BottomNavigationBarItem(
-                key: const Key('occurrences_tab'),
-                icon: Badge(
-                  key: const Key('occurrences_tab_badge'),
-                  isLabelVisible: pendingCount > 0,
-                  label: Text(
-                    key: const Key('occurrences_tab_badge_count'),
-                    pendingCount > 99 ? '99+' : '$pendingCount',
+          return ValueListenableBuilder<int>(
+            valueListenable: _messageRepository.unreadCount,
+            builder: (context, unreadCount, _) {
+              return BottomNavigationBar(
+                key: const Key('home_bottom_nav'),
+                currentIndex: _tabIndex,
+                onTap: (index) {
+                  setState(() => _tabIndex = index);
+                  if (index == 1) {
+                    _refreshMessagesSilently();
+                  }
+                },
+                items: [
+                  BottomNavigationBarItem(
+                    key: const Key('occurrences_tab'),
+                    icon: Badge(
+                      key: const Key('occurrences_tab_badge'),
+                      isLabelVisible: pendingCount > 0,
+                      label: Text(
+                        key: const Key('occurrences_tab_badge_count'),
+                        pendingCount > 99 ? '99+' : '$pendingCount',
+                      ),
+                      child: const Icon(Icons.list_alt),
+                    ),
+                    label: 'Ocorrências',
                   ),
-                  child: const Icon(Icons.list_alt),
-                ),
-                label: 'Ocorrências',
-              ),
-              const BottomNavigationBarItem(
-                key: Key('tasks_tab'),
-                icon: Icon(Icons.task_alt),
-                label: 'Tasks',
-              ),
-            ],
+                  BottomNavigationBarItem(
+                    key: const Key('messages_tab'),
+                    icon: Badge(
+                      key: const Key('messages_tab_badge'),
+                      isLabelVisible: unreadCount > 0,
+                      label: Text(
+                        key: const Key('messages_tab_badge_count'),
+                        unreadCount > 99 ? '99+' : '$unreadCount',
+                      ),
+                      child: const Icon(Icons.mail_outline),
+                    ),
+                    label: 'Mensagens',
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
