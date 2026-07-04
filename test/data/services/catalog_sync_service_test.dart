@@ -112,4 +112,81 @@ void main() {
         .getSingle();
     expect(cursor.lastServerTime, '2026-06-12T10:00:00Z');
   });
+
+  test('zones full snapshot upserts items and stores cursor', () async {
+    service = CatalogSyncService(
+      db,
+      buildClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'updated_since': null,
+            'server_time': '2026-07-04T10:00:00Z',
+            'items': [
+              {
+                'id': 'zone-1',
+                'nome': 'Manaus',
+                'tipo': 'municipio',
+                'municipio_pai_id': null,
+              },
+            ],
+            'deleted_ids': [],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    await service.syncZones();
+
+    final rows = await db.select(db.catalogZones).get();
+    expect(rows, hasLength(1));
+    expect(rows.single.nome, 'Manaus');
+    expect(rows.single.tipo, 'municipio');
+
+    final cursor = await (db.select(db.catalogSyncCursors)
+          ..where((t) => t.entity.equals('zones')))
+        .getSingle();
+    expect(cursor.lastServerTime, '2026-07-04T10:00:00Z');
+  });
+
+  test('zones delta applies deleted_ids locally', () async {
+    await db.into(db.catalogZones).insert(
+          CatalogZonesCompanion.insert(
+            id: 'zone-old',
+            nome: 'Antiga',
+            tipo: 'bairro',
+            updatedAt: DateTime.utc(2026, 6, 1),
+          ),
+        );
+
+    await db.into(db.catalogSyncCursors).insert(
+          CatalogSyncCursorsCompanion.insert(
+            entity: 'zones',
+            lastServerTime: const Value('2026-06-01T00:00:00Z'),
+          ),
+        );
+
+    service = CatalogSyncService(
+      db,
+      buildClient((request) async {
+        expect(request.url.path, endsWith('/catalog/zones'));
+        return http.Response(
+          jsonEncode({
+            'updated_since': '2026-06-01T00:00:00Z',
+            'server_time': '2026-07-04T10:00:00Z',
+            'items': [],
+            'deleted_ids': ['zone-old'],
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    await service.syncZones();
+
+    final rows = await db.select(db.catalogZones).get();
+    expect(rows, isEmpty);
+  });
 }

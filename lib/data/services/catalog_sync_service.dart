@@ -17,13 +17,14 @@ class CatalogSyncService {
   final AppDatabase _db;
   final ApiClient _api;
 
-  static const entities = ['observables', 'categories', 'municipalities'];
+  static const entities = ['observables', 'categories', 'municipalities', 'zones'];
 
   Future<CatalogSyncResult> syncAll() async {
     try {
       await syncObservables();
       await syncCategories();
       await syncMunicipalities();
+      await syncZones();
       return const CatalogSyncResult(success: true);
     } on Exception catch (e) {
       return CatalogSyncResult(success: false, error: e.toString());
@@ -46,6 +47,12 @@ class CatalogSyncService {
         entity: 'municipalities',
         fetch: _api.getCatalogMunicipalities,
         applyItems: _applyMunicipalities,
+      );
+
+  Future<void> syncZones() => _syncEntity(
+        entity: 'zones',
+        fetch: _api.getCatalogZones,
+        applyItems: _applyZones,
       );
 
   Future<void> _syncEntity({
@@ -115,6 +122,20 @@ class CatalogSyncService {
     }
   }
 
+  Future<void> _applyZones(List<Map<String, dynamic>> items) async {
+    for (final item in items) {
+      await _db.into(_db.catalogZones).insertOnConflictUpdate(
+            CatalogZonesCompanion.insert(
+              id: item['id'] as String,
+              nome: item['nome'] as String,
+              tipo: item['tipo'] as String,
+              municipioPaiId: Value(item['municipio_pai_id'] as String?),
+              updatedAt: DateTime.now().toUtc(),
+            ),
+          );
+    }
+  }
+
   Future<void> _deleteEntity(String entity, String id) async {
     switch (entity) {
       case 'observables':
@@ -123,6 +144,9 @@ class CatalogSyncService {
         await (_db.delete(_db.categories)..where((t) => t.id.equals(id))).go();
       case 'municipalities':
         await (_db.delete(_db.municipalities)..where((t) => t.id.equals(id)))
+            .go();
+      case 'zones':
+        await (_db.delete(_db.catalogZones)..where((t) => t.id.equals(id)))
             .go();
     }
   }

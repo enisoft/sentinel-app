@@ -7,7 +7,10 @@ import '../../core/capture/video_recording_policy.dart';
 import '../../domain/models/capture_result.dart';
 import '../../data/local/app_database.dart';
 import '../../data/repositories/catalog_repository.dart';
+import '../../data/repositories/occurrence_repository.dart';
+import '../../data/repositories/operator_profile_repository.dart';
 import '../../data/services/capture_occurrence_service.dart';
+import '../../domain/models/operator_zone.dart';
 import 'in_app_capture_screen.dart';
 
 /// Form mínimo pós-captura — nunca bloqueia o disparo anterior.
@@ -17,11 +20,15 @@ class OccurrenceDraftFormScreen extends StatefulWidget {
     required this.occurrenceId,
     this.captureService,
     this.catalogRepository,
+    this.operatorProfileRepository,
+    this.occurrenceRepository,
   });
 
   final String occurrenceId;
   final CaptureOccurrenceService? captureService;
   final CatalogRepository? catalogRepository;
+  final OperatorProfileRepository? operatorProfileRepository;
+  final OccurrenceRepository? occurrenceRepository;
 
   @override
   State<OccurrenceDraftFormScreen> createState() =>
@@ -34,6 +41,8 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
   bool _addingMedia = false;
   String? _categoryId;
   String? _observableId;
+  String? _zonaId;
+  List<OperatorZone> _zones = [];
   List<OccurrenceMediaData> _media = [];
   late final Future<List<CatalogItem>> _categoriesFuture;
   late final Future<List<CatalogItem>> _observablesFuture;
@@ -44,12 +53,50 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
   CatalogRepository get _catalog =>
       widget.catalogRepository ?? getIt<CatalogRepository>();
 
+  OperatorProfileRepository get _profileRepo =>
+      widget.operatorProfileRepository ?? getIt<OperatorProfileRepository>();
+
+  OccurrenceRepository get _occurrenceRepo =>
+      widget.occurrenceRepository ?? getIt<OccurrenceRepository>();
+
   @override
   void initState() {
     super.initState();
     _categoriesFuture = _catalog.getCategories();
     _observablesFuture = _catalog.getObservables();
-    _loadMedia();
+    _loadDraft();
+  }
+
+  Future<void> _loadDraft() async {
+    final occurrence = await _occurrenceRepo.getById(widget.occurrenceId);
+    final profile = await _profileRepo.getCached();
+    final media = await _captureService.listDraftMedia(widget.occurrenceId);
+    if (!mounted) return;
+
+    final savedZonaId = occurrence?.zonaId;
+    setState(() {
+      _media = media;
+      if (occurrence != null) {
+        _categoryId = occurrence.categoryId;
+        _observableId = occurrence.observableId;
+        final note = occurrence.description.trim();
+        if (note.isNotEmpty) {
+          _noteController.text = note;
+        }
+        if (savedZonaId != null) {
+          _zonaId = savedZonaId;
+        }
+      }
+      if (profile != null) {
+        _zones = profile.zones;
+        _zonaId ??= profile.defaultZoneId ??
+            (profile.zones.length == 1 ? profile.zones.first.id : null);
+      }
+    });
+
+    if (savedZonaId == null && _zonaId != null) {
+      _syncDraft();
+    }
   }
 
   Future<void> _loadMedia() async {
@@ -112,6 +159,7 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
       occurrenceId: widget.occurrenceId,
       categoryId: _categoryId,
       observableId: _observableId,
+      zonaId: _zonaId,
       note: _emptyToNull(_noteController.text),
     );
   }
@@ -125,6 +173,7 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
         occurrenceId: widget.occurrenceId,
         categoryId: _categoryId,
         observableId: _observableId,
+        zonaId: _zonaId,
         note: _emptyToNull(_noteController.text),
       );
 
@@ -150,108 +199,141 @@ class _OccurrenceDraftFormScreenState extends State<OccurrenceDraftFormScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Detalhes da ocorrência')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-            _DraftMediaSection(
-              media: _media,
-              addingMedia: _addingMedia,
-              onAddMedia: _onAddMedia,
-              onRemoveMedia: _onRemoveMedia,
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<List<CatalogItem>>(
-              future: _categoriesFuture,
-              builder: (context, snapshot) {
-                final items = snapshot.data ?? [];
-                if (items.isEmpty) {
-                  return const Text(
-                    key: Key('catalog_empty_warning'),
-                    'Catálogo vazio — selecione após sincronizar ou confirme sem categoria.',
-                  );
-                }
-                return DropdownButtonFormField<String>(
-                  key: const Key('category_field'),
-                  decoration: const InputDecoration(
-                    labelText: 'Categoria',
-                    border: OutlineInputBorder(),
-                  ),
-                  initialValue: _categoryId,
-                  items: items
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c.id,
-                          child: Text(c.name),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _DraftMediaSection(
+                      media: _media,
+                      addingMedia: _addingMedia,
+                      onAddMedia: _onAddMedia,
+                      onRemoveMedia: _onRemoveMedia,
+                    ),
+                    const SizedBox(height: 12),
+                    if (_zones.isNotEmpty)
+                      DropdownButtonFormField<String>(
+                        key: const Key('zone_field'),
+                        decoration: const InputDecoration(
+                          labelText: 'Zona',
+                          border: OutlineInputBorder(),
                         ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() => _categoryId = value);
-                    _syncDraft();
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<List<CatalogItem>>(
-              future: _observablesFuture,
-              builder: (context, snapshot) {
-                final items = snapshot.data ?? [];
-                if (items.isEmpty) {
-                  return const Text(
-                    'Catálogo de observáveis vazio — confirme sem observável se necessário.',
-                  );
-                }
-                return DropdownButtonFormField<String>(
-                  key: const Key('observable_field'),
-                  decoration: const InputDecoration(
-                    labelText: 'Observável',
-                    border: OutlineInputBorder(),
-                  ),
-                  initialValue: _observableId,
-                  items: items
-                      .map(
-                        (o) => DropdownMenuItem(
-                          value: o.id,
-                          child: Text(o.name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() => _observableId = value);
-                    _syncDraft();
-                  },
-                );
-              },
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              key: const Key('note_field'),
-              controller: _noteController,
-              decoration: const InputDecoration(
-                labelText: 'Nota',
-                border: OutlineInputBorder(),
+                        value: _zonaId,
+                        items: _zones
+                            .map(
+                              (zone) => DropdownMenuItem(
+                                value: zone.id,
+                                child: Text(zone.nome),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _zones.length == 1
+                            ? null
+                            : (value) {
+                                setState(() => _zonaId = value);
+                                _syncDraft();
+                              },
+                      ),
+                    if (_zones.isNotEmpty) const SizedBox(height: 12),
+                    FutureBuilder<List<CatalogItem>>(
+                      future: _categoriesFuture,
+                      builder: (context, snapshot) {
+                        final items = snapshot.data ?? [];
+                        if (items.isEmpty) {
+                          return const Text(
+                            key: Key('catalog_empty_warning'),
+                            'Catálogo vazio — selecione após sincronizar ou confirme sem categoria.',
+                          );
+                        }
+                        return DropdownButtonFormField<String>(
+                          key: const Key('category_field'),
+                          decoration: const InputDecoration(
+                            labelText: 'Categoria',
+                            border: OutlineInputBorder(),
+                          ),
+                          value: _categoryId,
+                          items: items
+                              .map(
+                                (c) => DropdownMenuItem(
+                                  value: c.id,
+                                  child: Text(c.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => _categoryId = value);
+                            _syncDraft();
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    FutureBuilder<List<CatalogItem>>(
+                      future: _observablesFuture,
+                      builder: (context, snapshot) {
+                        final items = snapshot.data ?? [];
+                        if (items.isEmpty) {
+                          return const Text(
+                            'Catálogo de observáveis vazio — confirme sem observável se necessário.',
+                          );
+                        }
+                        return DropdownButtonFormField<String>(
+                          key: const Key('observable_field'),
+                          decoration: const InputDecoration(
+                            labelText: 'Observável',
+                            border: OutlineInputBorder(),
+                          ),
+                          value: _observableId,
+                          items: items
+                              .map(
+                                (o) => DropdownMenuItem(
+                                  value: o.id,
+                                  child: Text(o.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => _observableId = value);
+                            _syncDraft();
+                          },
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const Key('note_field'),
+                      controller: _noteController,
+                      decoration: const InputDecoration(
+                        labelText: 'Nota',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                      onChanged: (_) => _syncDraft(),
+                    ),
+                  ],
+                ),
               ),
-              maxLines: 3,
-              onChanged: (_) => _syncDraft(),
             ),
-            const Spacer(),
-            FilledButton(
-              key: const Key('confirm_button'),
-              onPressed: _confirming ? null : _onConfirm,
-              child: _confirming
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Confirmar'),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: FilledButton(
+                key: const Key('confirm_button'),
+                onPressed: _confirming ? null : _onConfirm,
+                child: _confirming
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Confirmar'),
+              ),
             ),
           ],
         ),
-      ),
       ),
     );
   }

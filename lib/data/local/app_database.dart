@@ -12,6 +12,7 @@ import 'tables/cached_operator_profiles.dart';
 import 'tables/catalog_sync_cursors.dart';
 import 'tables/categories.dart';
 import 'tables/check_ins.dart';
+import 'tables/catalog_zones.dart';
 import 'tables/municipalities.dart';
 import 'tables/observables.dart';
 import 'tables/occurrence_media.dart';
@@ -27,6 +28,7 @@ part 'app_database.g.dart';
   Categories,
   Observables,
   Municipalities,
+  CatalogZones,
   CatalogSyncCursors,
 ])
 class AppDatabase extends _$AppDatabase {
@@ -35,7 +37,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -58,6 +60,17 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(observables);
             await m.createTable(municipalities);
             await m.createTable(catalogSyncCursors);
+          }
+          if (from < 5) {
+            await m.addColumn(occurrences, occurrences.zonaId);
+            await m.addColumn(cachedOperatorProfiles, cachedOperatorProfiles.zonesJson);
+            await m.addColumn(
+              cachedOperatorProfiles,
+              cachedOperatorProfiles.defaultZoneId,
+            );
+          }
+          if (from < 6) {
+            await m.createTable(catalogZones);
           }
         },
       );

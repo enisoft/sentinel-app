@@ -113,6 +113,27 @@ void main() {
       expect(pending.occurrences.map((o) => o.id), [draft.occurrence.id]);
     });
 
+    test('form update and confirm persist zona_id', () async {
+      final draft = await captureService.captureDraft();
+
+      await captureService.updateDraftForm(
+        occurrenceId: draft.occurrence.id,
+        zonaId: 'zone-42',
+      );
+
+      var updated = await occurrenceRepo.getById(draft.occurrence.id);
+      expect(updated!.zonaId, 'zone-42');
+
+      await captureService.confirmDraft(
+        occurrenceId: draft.occurrence.id,
+        zonaId: 'zone-42',
+      );
+
+      updated = await occurrenceRepo.getById(draft.occurrence.id);
+      expect(updated!.status, 'pending');
+      expect(updated.zonaId, 'zone-42');
+    });
+
     test('confirm without note applies media-type defaults for API contract', () async {
       final draft = await captureService.captureDraft();
 

@@ -42,6 +42,9 @@ class ApiClient {
   Future<CatalogDeltaResponse> getCatalogMunicipalities({String? updatedSince}) =>
       _getCatalog('municipalities', updatedSince);
 
+  Future<CatalogDeltaResponse> getCatalogZones({String? updatedSince}) =>
+      _getCatalog('zones', updatedSince);
+
   Future<List<String>> postOccurrencesSync(Map<String, dynamic> body) async {
     final response = await _post('/occurrences/sync', body);
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;

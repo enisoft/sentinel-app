@@ -1,89 +1,98 @@
-# Última tarefa executada — ENI-58: zoom da câmera por cliques (níveis)
+# ENI-78 — Retomar rascunho + lista navegável
 
-**Status: implementado** — verificação manual G86 pendente
-
-**Linear:** ENI-58 — zoom por níveis no preview (foto e vídeo), sem gesto contínuo
-
-Data: 2026-07-04
+**Tipo:** implementação FE (UI/navegação sobre dados locais)  
+**Data:** 2026-07-04  
+**Branch:** working tree
 
 ---
 
-## Escopo
+## Resumo
 
-Botões de nível de zoom no preview in-app (`camera`), fluxo pega-tudo (ENI-60). Troca instantânea via `setZoomLevel`; sem pinça/scroll.
-
-**Fora de escopo:** hash/GPS/pipeline/limite de vídeo/wakelock (ENI-50/52/60 intactos); auditoria de integridade.
-
----
-
-## Comportamento
-
-| Elemento | Comportamento |
-|----------|----------------|
-| Níveis-alvo | 0.5x (só se ultrawide / `min ≤ 0.5`), 1x, 2x, 4x (só se `max ≥ 4`) |
-| Device | `getMinZoomLevel()` / `getMaxZoomLevel()` do `CameraController` |
-| UI | Botões no preview; nível ativo destacado (círculo branco) |
-| Sessão | Nível persiste entre clipes na mesma tela de captura (não reseta) |
-| Gesto | Nenhum — só clique no nível |
-
-G86: sem tele dedicada; 4x é zoom digital se o max permitir.
+Lista de ocorrências (aba Ocorrências, ENI-57) agora é **navegável**: toque em rascunho abre o form editável; toque em confirmada/sincronizada abre detalhes read-only. O form **reidrata** categoria, observável, nota e zona ao reabrir um rascunho existente (além de mídias e zonas do operador).
 
 ---
 
 ## Implementação
 
-| Arquivo | Mudança |
-|---------|---------|
-| `lib/core/capture/camera_zoom_levels.dart` | Mapeamento min/max → níveis; `CameraZoomSession` (select + persistência) |
-| `lib/data/device/device_camera_source.dart` | `getMinZoomLevel` / `getMaxZoomLevel` / `setZoomLevel` |
-| `lib/presentation/capture/camera_zoom_controls.dart` | Botões de nível no preview |
-| `lib/presentation/capture/in_app_camera_preview.dart` | Overlay dos controles de zoom |
-| `test/core/capture/camera_zoom_levels_test.dart` | Mapeamento + select → applyZoom |
-| `test/presentation/capture/camera_zoom_controls_test.dart` | UI: níveis, tap chama setZoomLevel |
+### 1. Lista navegável (`occurrences_tab.dart`)
+
+| Comportamento | Destino |
+|---------------|---------|
+| Toque em **RASCUNHO** (`status = draft`) | `OccurrenceDraftFormScreen(occurrenceId)` |
+| Toque em **CONFIRMADA** / sincronizada | `OccurrenceDetailScreen(occurrenceId)` read-only |
+
+**Distinção visual:**
+- Rascunho: ícone `edit_note`, badge âmbar `Rascunho · {id6}`
+- Confirmada: ícone `check_circle_outline`, badge cinza com id curto
+- Recarrega lista ao voltar de qualquer tela (`_load()` após `Navigator.pop`)
+
+### 2. Reidratação do form (`occurrence_draft_form_screen.dart`)
+
+Novo `_loadDraft()` unifica carga de:
+- mídias (`listDraftMedia`)
+- zonas do operador (`/me` cache)
+- **campos salvos** do registro Drift: `categoryId`, `observableId`, `zonaId`, `description` (nota)
+
+Correção: dropdowns de categoria/observável usam `value:` (não `initialValue:`) para refletir estado após carga assíncrona.
+
+`_syncDraft()` só dispara default de zona em rascunho **novo** (sem `zonaId` salvo).
+
+### 3. Detalhes read-only (`occurrence_detail_screen.dart` — novo)
+
+Exibe sem edição:
+- mídias (thumbnails horizontais)
+- estado de sync (`occurrenceListStatusLabel`)
+- data/hora, zona, categoria, observável, nota, id curto
+
+Resolve nomes de catálogo e zona via `CatalogRepository` + cache de `/me`.
+
+### 4. Retomar rascunho
+
+Fluxo ENI-60 mantido: adicionar/remover mídia no form → Confirmar → `status = pending` → fila de sync.
 
 ---
 
-## Testes (`flutter test` — 152 passed)
+## Arquivos alterados / criados
+
+| Arquivo | Ação |
+|---------|------|
+| `lib/presentation/capture/occurrence_draft_form_screen.dart` | modificado — `_loadDraft()`, `OccurrenceRepository` injetável |
+| `lib/presentation/home/occurrences_tab.dart` | modificado — navegação + visual rascunho vs confirmada |
+| `lib/presentation/home/occurrence_detail_screen.dart` | **novo** — detalhes read-only |
+| `test/presentation/capture/occurrence_draft_resume_test.dart` | **novo** — reidratação + confirm enfileira |
+| `test/presentation/home/home_screen_test.dart` | modificado — navegação lista + badge rascunho |
+
+---
+
+## Testes
 
 ```
-00:07 +152: All tests passed!
+flutter test
+00:07 +170: All tests passed!
 ```
 
-Cenários ENI-58:
-
-- mapeamento respeita min/max (sem forçar 0.5x / 4x fora do range)
-- `CameraZoomSession.select` chama `applyZoom` com o nível correspondente
-- nível ativo persiste na sessão entre seleções
-- widget: tap em 2x / 0.5x chama `setZoomLevel` correspondente
-- controles ocultos quando há um único nível
-
----
-
-## Arquivos tocados
-
-**Novos:**
-
-- `lib/core/capture/camera_zoom_levels.dart`
-- `lib/presentation/capture/camera_zoom_controls.dart`
-- `test/core/capture/camera_zoom_levels_test.dart`
-- `test/presentation/capture/camera_zoom_controls_test.dart`
-
-**Alterados:**
-
-- `lib/data/device/device_camera_source.dart`
-- `lib/presentation/capture/in_app_camera_preview.dart`
-- `.cursor/docs/last_executed_task.md`
+| Teste | Verifica |
+|-------|----------|
+| `occurrence_draft_resume_test` — repopulates | categoria, observável, nota, zona, mídias ao reabrir |
+| `occurrence_draft_resume_test` — confirm enqueues | retomar → confirmar → `pending` + fila |
+| `home_screen_test` — tap draft/synced | roteia form vs detalhes read-only |
+| Suite completa | 170 testes verdes (+3 novos, baseline anterior 167) |
 
 ---
 
-## Verificação manual G86 (aceite — pendente)
+## Verificação manual (device G86)
 
-1. Preview mostra botões de nível; tocar alterna o zoom na hora (foto e vídeo)
-2. Gravar vídeo em 2x → zoom mantém durante a gravação
-3. Capturas em diferentes zooms entram no carrinho normalmente (pega-tudo intacto)
+1. Capturar 2 mídias + categoria/observável + nota → **SAIR** sem concluir.
+2. Abrir na lista → form com **TUDO** (mídias + categoria + observável + nota + zona).
+3. Adicionar 1 mídia → concluir → sincronizar → Postgres com 3 mídias e campos corretos.
+4. Abrir ocorrência sincronizada → detalhes read-only (sem botão Confirmar).
 
 ---
 
-## Auditoria
+## AUDITORIA
 
-**Não escalada.** UI/câmera; não toca integridade nem contrato. Report + testes + device bastam.
+Não exigida — UI/navegação sobre dados locais; não altera contrato/sync/auth.
+
+---
+
+*Implementação ENI-78 concluída.*

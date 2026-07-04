@@ -10,6 +10,20 @@ class CatalogItem {
   final String? type;
 }
 
+class ZoneCatalogItem {
+  const ZoneCatalogItem({
+    required this.id,
+    required this.nome,
+    required this.tipo,
+    this.municipioPaiId,
+  });
+
+  final String id;
+  final String nome;
+  final String tipo;
+  final String? municipioPaiId;
+}
+
 class CatalogRepository {
   CatalogRepository(this._db);
 
@@ -44,6 +58,22 @@ class CatalogRepository {
         .get();
     return rows
         .map((r) => CatalogItem(id: r.id, name: r.name, type: r.type))
+        .toList();
+  }
+
+  Future<List<ZoneCatalogItem>> getZones() async {
+    final rows = await (_db.select(_db.catalogZones)
+          ..orderBy([(t) => OrderingTerm.asc(t.nome)]))
+        .get();
+    return rows
+        .map(
+          (r) => ZoneCatalogItem(
+            id: r.id,
+            nome: r.nome,
+            tipo: r.tipo,
+            municipioPaiId: r.municipioPaiId,
+          ),
+        )
         .toList();
   }
 

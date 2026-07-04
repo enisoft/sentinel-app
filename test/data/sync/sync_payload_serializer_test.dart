@@ -187,6 +187,29 @@ void main() {
       expect(hash, matches(RegExp(r'^[0-9a-f]{64}$')));
     });
 
+    test('includes zona_id when occurrence has zone', () async {
+      final occurrence = await occurrenceRepo.createOccurrence(
+        id: 'occ-with-zone',
+        observableId: 'obs-1',
+        categoryId: 'cat-1',
+        title: 'Com zona',
+        description: 'Teste zona',
+        status: 'pending',
+        priority: 'medium',
+        occurredAt: DateTime.utc(2026, 7, 4, 12, 0),
+        createdAt: DateTime.utc(2026, 7, 4, 12, 0),
+        createdLocalAt: DateTime.utc(2026, 7, 4, 12, 0),
+        zonaId: 'zone-chosen',
+      );
+
+      final payload = serializer.serializeOccurrencesSyncPayload(
+        items: [(occurrence: occurrence, media: const [])],
+      );
+
+      final json = (payload['occurrences'] as List).single as Map<String, dynamic>;
+      expect(json['zona_id'], 'zone-chosen');
+    });
+
     test('serializes occurrence with 3 media distinct hashes and sort_order', () async {
       final occurrence = await occurrenceRepo.createOccurrence(
         id: 'occ-three-media',
