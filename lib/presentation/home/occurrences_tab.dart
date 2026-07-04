@@ -9,6 +9,8 @@ import '../../data/local/app_database.dart';
 import '../../data/repositories/occurrence_repository.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
+import '../capture/occurrence_draft_form_screen.dart';
+import 'occurrence_detail_screen.dart';
 
 /// Lista local de ocorrências + badge/botão de sync (ENI-49 / ENI-57).
 class OccurrencesTab extends StatefulWidget {
@@ -77,6 +79,33 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
   Future<void> _onSyncNow() async {
     await _syncForegroundRunner.runIfPending();
   }
+
+  Future<void> _onOccurrenceTap(Occurrence occurrence) async {
+    if (occurrence.status == OccurrenceLifecycleStatus.draft) {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => OccurrenceDraftFormScreen(
+            occurrenceId: occurrence.id,
+            occurrenceRepository: _occurrenceRepository,
+          ),
+        ),
+      );
+    } else {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => OccurrenceDetailScreen(
+            occurrenceId: occurrence.id,
+            occurrenceRepository: _occurrenceRepository,
+          ),
+        ),
+      );
+    }
+    if (!mounted) return;
+    await _load();
+  }
+
+  bool _isDraft(Occurrence occurrence) =>
+      occurrence.status == OccurrenceLifecycleStatus.draft;
 
   @override
   Widget build(BuildContext context) {
@@ -200,8 +229,22 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
       itemBuilder: (context, index) {
         final occurrence = _items[index];
         final shortId = occurrenceShortId(occurrence.id);
+        final isDraft = _isDraft(occurrence);
         return ListTile(
           key: Key('occurrence_item_${occurrence.id}'),
+          leading: CircleAvatar(
+            key: Key('occurrence_leading_${occurrence.id}'),
+            backgroundColor: isDraft
+                ? Colors.grey.shade300
+                : Colors.green.shade50,
+            child: Icon(
+              isDraft ? Icons.edit_note : Icons.check_circle_outline,
+              color: isDraft
+                  ? Colors.grey.shade700
+                  : Colors.green.shade700,
+              size: 22,
+            ),
+          ),
           title: Text(_occurrenceTitle(occurrence)),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,14 +255,21 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
                 key: Key('occurrence_id_badge_${occurrence.id}'),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
+                  color: isDraft
+                      ? Colors.amber.shade50
+                      : Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(4),
+                  border: isDraft
+                      ? Border.all(color: Colors.amber.shade200)
+                      : null,
                 ),
                 child: Text(
-                  shortId,
+                  isDraft ? 'Rascunho · $shortId' : shortId,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontFamily: 'monospace',
-                        color: Colors.grey.shade700,
+                        color: isDraft
+                            ? Colors.amber.shade900
+                            : Colors.grey.shade700,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                 ),
@@ -235,6 +285,7 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
                   fontWeight: FontWeight.w600,
                 ),
           ),
+          onTap: () => _onOccurrenceTap(occurrence),
         );
       },
     );

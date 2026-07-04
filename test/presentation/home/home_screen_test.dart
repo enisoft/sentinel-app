@@ -12,7 +12,9 @@ import 'package:sentinel_app/data/fakes/fake_sync_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/presentation/capture/capture_home_screen.dart';
+import 'package:sentinel_app/presentation/capture/occurrence_draft_form_screen.dart';
 import 'package:sentinel_app/presentation/home/home_screen.dart';
+import 'package:sentinel_app/presentation/home/occurrence_detail_screen.dart';
 import 'package:sentinel_app/presentation/home/occurrences_tab.dart';
 import 'package:sentinel_app/presentation/settings/settings_screen.dart';
 
@@ -132,7 +134,7 @@ void main() {
     expect(find.byKey(const Key('occurrence_id_badge_draft-1')), findsOneWidget);
     expect(find.byKey(const Key('occurrence_id_badge_pending-1')), findsOneWidget);
     expect(find.byKey(const Key('occurrence_id_badge_synced-1')), findsOneWidget);
-    expect(find.text('draft-'), findsOneWidget);
+    expect(find.text('Rascunho · draft-'), findsOneWidget);
     expect(find.text('pendin'), findsOneWidget);
     expect(find.text('synced'), findsOneWidget);
 
@@ -173,6 +175,48 @@ void main() {
       tester.widget<Badge>(find.byKey(const Key('occurrences_tab_badge'))).isLabelVisible,
       isTrue,
     );
+  });
+
+  testWidgets('tap draft opens form and tap synced opens read-only detail',
+      (tester) async {
+    await occurrenceRepo.createOccurrence(
+      id: 'draft-nav',
+      title: '',
+      description: 'Minha nota rascunho',
+      status: OccurrenceLifecycleStatus.draft,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1, 10),
+    );
+    await occurrenceRepo.createOccurrence(
+      id: 'synced-nav',
+      title: 'Título sync',
+      description: 'Descrição sync',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 2, 11),
+    );
+    await occurrenceRepo.markMediaDone('synced-nav');
+    await occurrenceRepo.beginJsonSync('synced-nav');
+    await occurrenceRepo.markSynced('synced-nav');
+
+    await pumpHome(tester);
+
+    await tester.tap(find.byKey(const Key('occurrence_item_draft-nav')));
+    await tester.pumpAndSettle();
+    expect(find.byType(OccurrenceDraftFormScreen), findsOneWidget);
+    expect(find.text('Minha nota rascunho'), findsOneWidget);
+    expect(find.byKey(const Key('confirm_button')), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('occurrence_item_synced-nav')));
+    await tester.pumpAndSettle();
+    expect(find.byType(OccurrenceDetailScreen), findsOneWidget);
+    expect(find.text('Sincronizada'), findsOneWidget);
+    expect(find.text('Título sync'), findsNothing);
+    expect(find.text('Descrição sync'), findsOneWidget);
+    expect(find.byKey(const Key('confirm_button')), findsNothing);
   });
 
   test('occurrenceShortId keeps first six characters', () {
