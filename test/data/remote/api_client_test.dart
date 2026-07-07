@@ -98,16 +98,40 @@ void main() {
       );
     });
 
-    test('missing token throws 401 ApiException', () async {
+    test('missing token without persisted session throws 401 ApiException', () async {
       final client = ApiClient(
         config: config,
-        authGateway: FakeAuthGateway(signedIn: false),
+        authGateway: FakeAuthGateway(
+          signedIn: false,
+          persistedSession: false,
+        ),
         httpClient: MockClient((_) async => http.Response('', 200)),
       );
 
       expect(
         () => client.getMe(),
         throwsA(isA<ApiException>().having((e) => e.statusCode, 'status', 401)),
+      );
+    });
+
+    test('missing token with persisted session throws network ApiException (ENI-84)',
+        () async {
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(
+          signedIn: false,
+          persistedSession: true,
+        ),
+        httpClient: MockClient((_) async => http.Response('', 200)),
+      );
+
+      expect(
+        () => client.getMe(),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.isNetworkError, 'isNetworkError', isTrue)
+              .having((e) => e.isUnauthorized, 'isUnauthorized', isFalse),
+        ),
       );
     });
 

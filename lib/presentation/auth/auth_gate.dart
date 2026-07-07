@@ -21,11 +21,11 @@ class _AuthGateState extends State<AuthGate> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<bool>(
-      stream: _auth.sessionStream,
-      initialData: _auth.isSignedIn,
+      stream: _auth.appAccessStream,
+      initialData: _auth.canAccessApp,
       builder: (context, snapshot) {
-        final signedIn = snapshot.data ?? false;
-        if (!signedIn) {
+        final canAccess = snapshot.data ?? false;
+        if (!canAccess) {
           return LoginScreen(authGateway: widget.authGateway);
         }
         return AppBootstrapScreen(authGateway: widget.authGateway);

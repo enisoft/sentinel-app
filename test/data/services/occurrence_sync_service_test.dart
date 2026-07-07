@@ -224,7 +224,8 @@ void main() {
     expect(occurrence.syncedAt, isNull);
   });
 
-  test('401 on JSON triggers signOut', () async {
+  test('401 on JSON triggers signOut when online and refresh fails', () async {
+    fakeAuth.refreshSucceeds = false;
     await seedOccurrence(id: 'occ-401');
     fakeGateway.syncException = ApiException(401, 'Token inválido.');
 
@@ -235,7 +236,21 @@ void main() {
     expect(fakeAuth.loginNotice, AuthMessages.sessionExpired);
   });
 
-  test('401 on media upload triggers signOut', () async {
+  test('401 on JSON offline does not trigger signOut (ENI-84)', () async {
+    fakeAuth.refreshSucceeds = false;
+    fakeAuth.network.online = false;
+    await seedOccurrence(id: 'occ-401-offline');
+    fakeGateway.syncException = ApiException(401, 'Token inválido.');
+
+    final result = await service.processPending();
+
+    expect(result.unauthorized, isFalse);
+    expect(result.hadNetworkFailure, isTrue);
+    expect(fakeAuth.canAccessApp, isTrue);
+  });
+
+  test('401 on media upload triggers signOut when online and refresh fails', () async {
+    fakeAuth.refreshSucceeds = false;
     await seedOccurrence(id: 'occ-media-401', withMedia: true);
     fakeMediaUploader.uploadException =
         MediaUploadException(401, 'Token inválido.');

@@ -12,6 +12,7 @@ import 'package:sentinel_app/core/auth/auth_messages.dart';
 import 'package:sentinel_app/core/bootstrap/bootstrap_messages.dart';
 import 'package:sentinel_app/core/config/app_config.dart';
 import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
+import 'package:sentinel_app/data/fakes/fake_network_reachability.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
 import 'package:sentinel_app/data/remote/api_client.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
@@ -30,7 +31,10 @@ void main() {
 
   setUp(() async {
     db = AppDatabase.forTesting(NativeDatabase.memory());
-    auth = FakeAuthGateway(signedIn: true);
+    auth = FakeAuthGateway(
+      signedIn: true,
+      networkReachability: FakeNetworkReachability(online: true),
+    );
   });
 
   tearDown(() async {
@@ -126,6 +130,8 @@ void main() {
 
   testWidgets('401 on /me ends loading and shows session expired on login',
       (tester) async {
+    auth.refreshSucceeds = false;
+
     await pumpAuthGate(
       tester,
       MockClient((request) async {

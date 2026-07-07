@@ -90,14 +90,27 @@ class OccurrenceSyncService {
           await _advanceMedia(occurrence.id);
         } on MediaUploadException catch (e) {
           if (e.isUnauthorized) {
-            await _auth.signOut(loginNotice: AuthMessages.sessionExpired);
-            return OccurrenceSyncResult(
-              synced: synced,
-              failed: failed,
-              skipped: skipped,
-              unauthorized: true,
-              hadNetworkFailure: hadNetworkFailure,
+            if (await _auth.shouldSignOutForUnauthorized(
+              statusCode: e.statusCode,
+              isNetworkError: e.isNetworkError,
+            )) {
+              await _auth.signOut(loginNotice: AuthMessages.sessionExpired);
+              return OccurrenceSyncResult(
+                synced: synced,
+                failed: failed,
+                skipped: skipped,
+                unauthorized: true,
+                hadNetworkFailure: hadNetworkFailure,
+              );
+            }
+            hadNetworkFailure = true;
+            await _occurrences.recordFailure(
+              occurrence.id,
+              SyncPhase.mediaUploading,
+              e.message,
             );
+            failed++;
+            continue;
           }
           if (e.isNetworkError) hadNetworkFailure = true;
           await _occurrences.recordFailure(
@@ -154,14 +167,27 @@ class OccurrenceSyncService {
           }
         } on ApiException catch (e) {
           if (e.isUnauthorized) {
-            await _auth.signOut(loginNotice: AuthMessages.sessionExpired);
-            return OccurrenceSyncResult(
-              synced: synced,
-              failed: failed,
-              skipped: skipped,
-              unauthorized: true,
-              hadNetworkFailure: hadNetworkFailure,
+            if (await _auth.shouldSignOutForUnauthorized(
+              statusCode: e.statusCode,
+              isNetworkError: e.isNetworkError,
+            )) {
+              await _auth.signOut(loginNotice: AuthMessages.sessionExpired);
+              return OccurrenceSyncResult(
+                synced: synced,
+                failed: failed,
+                skipped: skipped,
+                unauthorized: true,
+                hadNetworkFailure: hadNetworkFailure,
+              );
+            }
+            hadNetworkFailure = true;
+            await _occurrences.recordFailure(
+              occurrence.id,
+              SyncPhase.jsonSyncing,
+              e.message,
             );
+            failed++;
+            continue;
           }
 
           if (e.isNetworkError) hadNetworkFailure = true;

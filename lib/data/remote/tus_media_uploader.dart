@@ -35,7 +35,7 @@ class TusMediaUploader implements MediaUploader {
   Future<void> uploadOccurrenceMedia({required String occurrenceId}) async {
     final token = _auth.accessToken;
     if (token == null || token.isEmpty) {
-      throw MediaUploadException(401, 'Sessão ausente para upload de mídia.');
+      throw MediaUploadException(null, 'Sessão offline — upload adiado.');
     }
 
     final media = await _occurrences.getMedia(occurrenceId);

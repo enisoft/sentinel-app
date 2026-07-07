@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/app_config.dart';
+import '../core/network/network_reachability.dart';
 import '../data/auth/secure_gotrue_async_storage.dart';
 import '../data/auth/secure_key_value_store.dart';
 import '../data/auth/secure_supabase_local_storage.dart';
@@ -50,6 +51,11 @@ Future<void> configureDependencies() async {
 
   final secureStore = FlutterSecureKeyValueStore();
   final legacyKey = legacySharedPrefsSessionKey(config.supabaseUrl);
+
+  getIt.registerSingleton<SecureKeyValueStore>(secureStore);
+  getIt.registerLazySingleton<NetworkReachability>(
+    () => DnsNetworkReachability(),
+  );
 
   await Supabase.initialize(
     url: config.supabaseUrl,
@@ -141,7 +147,11 @@ Future<void> _registerCore(
 
   if (!getIt.isRegistered<AuthGateway>()) {
     getIt.registerLazySingleton<AuthGateway>(
-      () => SupabaseAuthGateway(Supabase.instance.client),
+      () => SupabaseAuthGateway(
+        Supabase.instance.client,
+        getIt<SecureKeyValueStore>(),
+        networkReachability: getIt<NetworkReachability>(),
+      ),
     );
   }
 
@@ -262,6 +272,12 @@ class _UnimplementedAuthGateway implements AuthGateway {
   Stream<bool> get sessionStream => Stream.value(false);
 
   @override
+  Stream<bool> get appAccessStream => Stream.value(false);
+
+  @override
+  bool get canAccessApp => false;
+
+  @override
   bool get isSignedIn => false;
 
   @override
@@ -272,6 +288,19 @@ class _UnimplementedAuthGateway implements AuthGateway {
 
   @override
   void clearLoginNotice() {}
+
+  @override
+  Future<bool> hasPersistedSession() async => false;
+
+  @override
+  Future<bool> tryRefreshSessionSilently() async => false;
+
+  @override
+  Future<bool> shouldSignOutForUnauthorized({
+    required int? statusCode,
+    bool isNetworkError = false,
+  }) async =>
+      false;
 
   @override
   Future<void> signIn({required String email, required String password}) async {}

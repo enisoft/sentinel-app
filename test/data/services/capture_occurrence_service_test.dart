@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentinel_app/app/di.dart';
 import 'package:sentinel_app/core/sync/sync_state.dart';
+import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
 import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
 import 'package:sentinel_app/data/fakes/fake_location_source.dart';
@@ -51,6 +52,26 @@ void main() {
   });
 
   group('CaptureOccurrenceService', () {
+    test('captureDraft does not require accessToken (ENI-84)', () async {
+      await getIt.reset();
+      await configureDependenciesForTesting(
+        db,
+        authGateway: FakeAuthGateway(
+          signedIn: false,
+          persistedSession: true,
+        ),
+        cameraSource: camera,
+        locationSource: location,
+        hashService: hashService,
+      );
+      final offlineCapture = getIt<CaptureOccurrenceService>();
+
+      final draft = await offlineCapture.captureDraft();
+
+      expect(draft.occurrence.id, isNotEmpty);
+      expect(draft.gpsAvailable, isTrue);
+    });
+
     test('fake capture creates local_saved draft with media and metadata', () async {
       final draft = await captureService.captureDraft();
 
