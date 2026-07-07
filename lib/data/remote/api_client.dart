@@ -122,6 +122,9 @@ class ApiClient {
   }) async {
     final token = _auth.accessToken;
     if (token == null) {
+      if (await _auth.hasPersistedSession()) {
+        throw ApiException.network('Sessão offline — token indisponível.');
+      }
       throw ApiException(401, 'Token de autenticação ausente.');
     }
 

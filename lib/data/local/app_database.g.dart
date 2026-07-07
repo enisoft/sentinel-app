@@ -2755,6 +2755,598 @@ class CheckInsCompanion extends UpdateCompanion<CheckIn> {
   }
 }
 
+class $CachedMessagesTable extends CachedMessages
+    with TableInfo<$CachedMessagesTable, CachedMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CachedMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
+  @override
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+    'author',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _estadoMeta = const VerificationMeta('estado');
+  @override
+  late final GeneratedColumn<String> estado = GeneratedColumn<String>(
+    'estado',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _readAtMeta = const VerificationMeta('readAt');
+  @override
+  late final GeneratedColumn<DateTime> readAt = GeneratedColumn<DateTime>(
+    'read_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _actedAtMeta = const VerificationMeta(
+    'actedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> actedAt = GeneratedColumn<DateTime>(
+    'acted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _cachedAtMeta = const VerificationMeta(
+    'cachedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> cachedAt = GeneratedColumn<DateTime>(
+    'cached_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    author,
+    title,
+    body,
+    type,
+    estado,
+    createdAt,
+    readAt,
+    actedAt,
+    cachedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'cached_messages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CachedMessage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('author')) {
+      context.handle(
+        _authorMeta,
+        author.isAcceptableOrUnknown(data['author']!, _authorMeta),
+      );
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('estado')) {
+      context.handle(
+        _estadoMeta,
+        estado.isAcceptableOrUnknown(data['estado']!, _estadoMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_estadoMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('read_at')) {
+      context.handle(
+        _readAtMeta,
+        readAt.isAcceptableOrUnknown(data['read_at']!, _readAtMeta),
+      );
+    }
+    if (data.containsKey('acted_at')) {
+      context.handle(
+        _actedAtMeta,
+        actedAt.isAcceptableOrUnknown(data['acted_at']!, _actedAtMeta),
+      );
+    }
+    if (data.containsKey('cached_at')) {
+      context.handle(
+        _cachedAtMeta,
+        cachedAt.isAcceptableOrUnknown(data['cached_at']!, _cachedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cachedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CachedMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CachedMessage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      author: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      estado: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}estado'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      readAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}read_at'],
+      ),
+      actedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}acted_at'],
+      ),
+      cachedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}cached_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CachedMessagesTable createAlias(String alias) {
+    return $CachedMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class CachedMessage extends DataClass implements Insertable<CachedMessage> {
+  final String id;
+  final String author;
+  final String title;
+  final String body;
+  final String type;
+  final String estado;
+  final DateTime createdAt;
+  final DateTime? readAt;
+  final DateTime? actedAt;
+  final DateTime cachedAt;
+  const CachedMessage({
+    required this.id,
+    required this.author,
+    required this.title,
+    required this.body,
+    required this.type,
+    required this.estado,
+    required this.createdAt,
+    this.readAt,
+    this.actedAt,
+    required this.cachedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['author'] = Variable<String>(author);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['type'] = Variable<String>(type);
+    map['estado'] = Variable<String>(estado);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || readAt != null) {
+      map['read_at'] = Variable<DateTime>(readAt);
+    }
+    if (!nullToAbsent || actedAt != null) {
+      map['acted_at'] = Variable<DateTime>(actedAt);
+    }
+    map['cached_at'] = Variable<DateTime>(cachedAt);
+    return map;
+  }
+
+  CachedMessagesCompanion toCompanion(bool nullToAbsent) {
+    return CachedMessagesCompanion(
+      id: Value(id),
+      author: Value(author),
+      title: Value(title),
+      body: Value(body),
+      type: Value(type),
+      estado: Value(estado),
+      createdAt: Value(createdAt),
+      readAt: readAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(readAt),
+      actedAt: actedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(actedAt),
+      cachedAt: Value(cachedAt),
+    );
+  }
+
+  factory CachedMessage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CachedMessage(
+      id: serializer.fromJson<String>(json['id']),
+      author: serializer.fromJson<String>(json['author']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      type: serializer.fromJson<String>(json['type']),
+      estado: serializer.fromJson<String>(json['estado']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      readAt: serializer.fromJson<DateTime?>(json['readAt']),
+      actedAt: serializer.fromJson<DateTime?>(json['actedAt']),
+      cachedAt: serializer.fromJson<DateTime>(json['cachedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'author': serializer.toJson<String>(author),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'type': serializer.toJson<String>(type),
+      'estado': serializer.toJson<String>(estado),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'readAt': serializer.toJson<DateTime?>(readAt),
+      'actedAt': serializer.toJson<DateTime?>(actedAt),
+      'cachedAt': serializer.toJson<DateTime>(cachedAt),
+    };
+  }
+
+  CachedMessage copyWith({
+    String? id,
+    String? author,
+    String? title,
+    String? body,
+    String? type,
+    String? estado,
+    DateTime? createdAt,
+    Value<DateTime?> readAt = const Value.absent(),
+    Value<DateTime?> actedAt = const Value.absent(),
+    DateTime? cachedAt,
+  }) => CachedMessage(
+    id: id ?? this.id,
+    author: author ?? this.author,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    type: type ?? this.type,
+    estado: estado ?? this.estado,
+    createdAt: createdAt ?? this.createdAt,
+    readAt: readAt.present ? readAt.value : this.readAt,
+    actedAt: actedAt.present ? actedAt.value : this.actedAt,
+    cachedAt: cachedAt ?? this.cachedAt,
+  );
+  CachedMessage copyWithCompanion(CachedMessagesCompanion data) {
+    return CachedMessage(
+      id: data.id.present ? data.id.value : this.id,
+      author: data.author.present ? data.author.value : this.author,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      type: data.type.present ? data.type.value : this.type,
+      estado: data.estado.present ? data.estado.value : this.estado,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      readAt: data.readAt.present ? data.readAt.value : this.readAt,
+      actedAt: data.actedAt.present ? data.actedAt.value : this.actedAt,
+      cachedAt: data.cachedAt.present ? data.cachedAt.value : this.cachedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedMessage(')
+          ..write('id: $id, ')
+          ..write('author: $author, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('type: $type, ')
+          ..write('estado: $estado, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('actedAt: $actedAt, ')
+          ..write('cachedAt: $cachedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    author,
+    title,
+    body,
+    type,
+    estado,
+    createdAt,
+    readAt,
+    actedAt,
+    cachedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CachedMessage &&
+          other.id == this.id &&
+          other.author == this.author &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.type == this.type &&
+          other.estado == this.estado &&
+          other.createdAt == this.createdAt &&
+          other.readAt == this.readAt &&
+          other.actedAt == this.actedAt &&
+          other.cachedAt == this.cachedAt);
+}
+
+class CachedMessagesCompanion extends UpdateCompanion<CachedMessage> {
+  final Value<String> id;
+  final Value<String> author;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<String> type;
+  final Value<String> estado;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> readAt;
+  final Value<DateTime?> actedAt;
+  final Value<DateTime> cachedAt;
+  final Value<int> rowid;
+  const CachedMessagesCompanion({
+    this.id = const Value.absent(),
+    this.author = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.type = const Value.absent(),
+    this.estado = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.readAt = const Value.absent(),
+    this.actedAt = const Value.absent(),
+    this.cachedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CachedMessagesCompanion.insert({
+    required String id,
+    this.author = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    required String type,
+    required String estado,
+    required DateTime createdAt,
+    this.readAt = const Value.absent(),
+    this.actedAt = const Value.absent(),
+    required DateTime cachedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       type = Value(type),
+       estado = Value(estado),
+       createdAt = Value(createdAt),
+       cachedAt = Value(cachedAt);
+  static Insertable<CachedMessage> custom({
+    Expression<String>? id,
+    Expression<String>? author,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<String>? type,
+    Expression<String>? estado,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? readAt,
+    Expression<DateTime>? actedAt,
+    Expression<DateTime>? cachedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (author != null) 'author': author,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (type != null) 'type': type,
+      if (estado != null) 'estado': estado,
+      if (createdAt != null) 'created_at': createdAt,
+      if (readAt != null) 'read_at': readAt,
+      if (actedAt != null) 'acted_at': actedAt,
+      if (cachedAt != null) 'cached_at': cachedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CachedMessagesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? author,
+    Value<String>? title,
+    Value<String>? body,
+    Value<String>? type,
+    Value<String>? estado,
+    Value<DateTime>? createdAt,
+    Value<DateTime?>? readAt,
+    Value<DateTime?>? actedAt,
+    Value<DateTime>? cachedAt,
+    Value<int>? rowid,
+  }) {
+    return CachedMessagesCompanion(
+      id: id ?? this.id,
+      author: author ?? this.author,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      type: type ?? this.type,
+      estado: estado ?? this.estado,
+      createdAt: createdAt ?? this.createdAt,
+      readAt: readAt ?? this.readAt,
+      actedAt: actedAt ?? this.actedAt,
+      cachedAt: cachedAt ?? this.cachedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (estado.present) {
+      map['estado'] = Variable<String>(estado.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (readAt.present) {
+      map['read_at'] = Variable<DateTime>(readAt.value);
+    }
+    if (actedAt.present) {
+      map['acted_at'] = Variable<DateTime>(actedAt.value);
+    }
+    if (cachedAt.present) {
+      map['cached_at'] = Variable<DateTime>(cachedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CachedMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('author: $author, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('type: $type, ')
+          ..write('estado: $estado, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('readAt: $readAt, ')
+          ..write('actedAt: $actedAt, ')
+          ..write('cachedAt: $cachedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $CachedOperatorProfilesTable extends CachedOperatorProfiles
     with TableInfo<$CachedOperatorProfilesTable, CachedOperatorProfile> {
   @override
@@ -4810,6 +5402,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $CheckInsTable checkIns = $CheckInsTable(this);
+  late final $CachedMessagesTable cachedMessages = $CachedMessagesTable(this);
   late final $CachedOperatorProfilesTable cachedOperatorProfiles =
       $CachedOperatorProfilesTable(this);
   late final $CategoriesTable categories = $CategoriesTable(this);
@@ -4826,6 +5419,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     occurrences,
     occurrenceMedia,
     checkIns,
+    cachedMessages,
     cachedOperatorProfiles,
     categories,
     observables,
@@ -6340,6 +6934,303 @@ typedef $$CheckInsTableProcessedTableManager =
       CheckIn,
       PrefetchHooks Function()
     >;
+typedef $$CachedMessagesTableCreateCompanionBuilder =
+    CachedMessagesCompanion Function({
+      required String id,
+      Value<String> author,
+      Value<String> title,
+      Value<String> body,
+      required String type,
+      required String estado,
+      required DateTime createdAt,
+      Value<DateTime?> readAt,
+      Value<DateTime?> actedAt,
+      required DateTime cachedAt,
+      Value<int> rowid,
+    });
+typedef $$CachedMessagesTableUpdateCompanionBuilder =
+    CachedMessagesCompanion Function({
+      Value<String> id,
+      Value<String> author,
+      Value<String> title,
+      Value<String> body,
+      Value<String> type,
+      Value<String> estado,
+      Value<DateTime> createdAt,
+      Value<DateTime?> readAt,
+      Value<DateTime?> actedAt,
+      Value<DateTime> cachedAt,
+      Value<int> rowid,
+    });
+
+class $$CachedMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get estado => $composableBuilder(
+    column: $table.estado,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get actedAt => $composableBuilder(
+    column: $table.actedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CachedMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get estado => $composableBuilder(
+    column: $table.estado,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get readAt => $composableBuilder(
+    column: $table.readAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get actedAt => $composableBuilder(
+    column: $table.actedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get cachedAt => $composableBuilder(
+    column: $table.cachedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CachedMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CachedMessagesTable> {
+  $$CachedMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get author =>
+      $composableBuilder(column: $table.author, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get estado =>
+      $composableBuilder(column: $table.estado, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get readAt =>
+      $composableBuilder(column: $table.readAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get actedAt =>
+      $composableBuilder(column: $table.actedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get cachedAt =>
+      $composableBuilder(column: $table.cachedAt, builder: (column) => column);
+}
+
+class $$CachedMessagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CachedMessagesTable,
+          CachedMessage,
+          $$CachedMessagesTableFilterComposer,
+          $$CachedMessagesTableOrderingComposer,
+          $$CachedMessagesTableAnnotationComposer,
+          $$CachedMessagesTableCreateCompanionBuilder,
+          $$CachedMessagesTableUpdateCompanionBuilder,
+          (
+            CachedMessage,
+            BaseReferences<_$AppDatabase, $CachedMessagesTable, CachedMessage>,
+          ),
+          CachedMessage,
+          PrefetchHooks Function()
+        > {
+  $$CachedMessagesTableTableManager(
+    _$AppDatabase db,
+    $CachedMessagesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CachedMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CachedMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CachedMessagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> author = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> estado = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<DateTime?> actedAt = const Value.absent(),
+                Value<DateTime> cachedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CachedMessagesCompanion(
+                id: id,
+                author: author,
+                title: title,
+                body: body,
+                type: type,
+                estado: estado,
+                createdAt: createdAt,
+                readAt: readAt,
+                actedAt: actedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String> author = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                required String type,
+                required String estado,
+                required DateTime createdAt,
+                Value<DateTime?> readAt = const Value.absent(),
+                Value<DateTime?> actedAt = const Value.absent(),
+                required DateTime cachedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => CachedMessagesCompanion.insert(
+                id: id,
+                author: author,
+                title: title,
+                body: body,
+                type: type,
+                estado: estado,
+                createdAt: createdAt,
+                readAt: readAt,
+                actedAt: actedAt,
+                cachedAt: cachedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CachedMessagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CachedMessagesTable,
+      CachedMessage,
+      $$CachedMessagesTableFilterComposer,
+      $$CachedMessagesTableOrderingComposer,
+      $$CachedMessagesTableAnnotationComposer,
+      $$CachedMessagesTableCreateCompanionBuilder,
+      $$CachedMessagesTableUpdateCompanionBuilder,
+      (
+        CachedMessage,
+        BaseReferences<_$AppDatabase, $CachedMessagesTable, CachedMessage>,
+      ),
+      CachedMessage,
+      PrefetchHooks Function()
+    >;
 typedef $$CachedOperatorProfilesTableCreateCompanionBuilder =
     CachedOperatorProfilesCompanion Function({
       required String id,
@@ -7529,6 +8420,8 @@ class $AppDatabaseManager {
       $$OccurrenceMediaTableTableManager(_db, _db.occurrenceMedia);
   $$CheckInsTableTableManager get checkIns =>
       $$CheckInsTableTableManager(_db, _db.checkIns);
+  $$CachedMessagesTableTableManager get cachedMessages =>
+      $$CachedMessagesTableTableManager(_db, _db.cachedMessages);
   $$CachedOperatorProfilesTableTableManager get cachedOperatorProfiles =>
       $$CachedOperatorProfilesTableTableManager(
         _db,
