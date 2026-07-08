@@ -10,6 +10,7 @@ import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
 
 enum CaptureMode { photo, video }
+enum CaptureFeedbackEvent { photo, videoStart, videoStop }
 
 /// Controles compartilhados de captura foto/vídeo com preview ao vivo.
 class InAppCaptureControls extends StatefulWidget {
@@ -19,6 +20,7 @@ class InAppCaptureControls extends StatefulWidget {
     required this.onCaptureComplete,
     required this.canInteract,
     this.onError,
+    this.onCaptureFeedback,
   });
 
   final CameraSource cameraSource;
@@ -26,6 +28,7 @@ class InAppCaptureControls extends StatefulWidget {
   final Future<void> Function(CaptureResult capture) onCaptureComplete;
   final bool canInteract;
   final ValueChanged<String>? onError;
+  final ValueChanged<CaptureFeedbackEvent>? onCaptureFeedback;
 
   @override
   State<InAppCaptureControls> createState() => _InAppCaptureControlsState();
@@ -68,10 +71,13 @@ class _InAppCaptureControlsState extends State<InAppCaptureControls> {
     if (!_canPress) return;
 
     if (_mode == CaptureMode.photo) {
+      widget.onCaptureFeedback?.call(CaptureFeedbackEvent.photo);
       await _capturePhoto();
     } else if (_recording) {
+      widget.onCaptureFeedback?.call(CaptureFeedbackEvent.videoStop);
       await _stopVideoRecording();
     } else {
+      widget.onCaptureFeedback?.call(CaptureFeedbackEvent.videoStart);
       await _startVideoRecording();
     }
   }

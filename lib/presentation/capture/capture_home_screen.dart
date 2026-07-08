@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/di.dart';
 import '../../core/capture/video_recording_policy.dart';
@@ -29,11 +31,32 @@ class CaptureHomeScreen extends StatefulWidget {
   State<CaptureHomeScreen> createState() => _CaptureHomeScreenState();
 }
 
-class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
+class _CaptureHomeScreenState extends State<CaptureHomeScreen>
+    with SingleTickerProviderStateMixin {
   bool _cameraPermissionDenied = false;
   bool _cameraReady = false;
   String? _activeDraftId;
   List<OccurrenceMediaData> _draftMedia = [];
+  late final AnimationController _feedbackFlashController;
+  late final Animation<double> _feedbackFlashOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedbackFlashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    )..value = 1;
+    _feedbackFlashOpacity = Tween<double>(
+      begin: 0.85,
+      end: 0,
+    ).animate(
+      CurvedAnimation(
+        parent: _feedbackFlashController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+  }
 
   CaptureOccurrenceService get _captureService =>
       widget.captureService ?? getIt<CaptureOccurrenceService>();
@@ -69,6 +92,25 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
     final media = await _captureService.listDraftMedia(draftId);
     if (!mounted) return;
     setState(() => _draftMedia = media);
+  }
+
+  @override
+  void dispose() {
+    _feedbackFlashController.dispose();
+    super.dispose();
+  }
+
+  void _onCaptureFeedback(CaptureFeedbackEvent event) {
+    _feedbackFlashController.forward(from: 0);
+    switch (event) {
+      case CaptureFeedbackEvent.photo:
+      case CaptureFeedbackEvent.videoStart:
+        unawaited(HapticFeedback.lightImpact());
+        return;
+      case CaptureFeedbackEvent.videoStop:
+        unawaited(HapticFeedback.selectionClick());
+        return;
+    }
   }
 
   void _clearActiveDraft() {
@@ -235,6 +277,7 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
                       canInteract: _canInteract,
                       onCaptureComplete: _onCaptureComplete,
                       onError: _onCaptureError,
+                      onCaptureFeedback: _onCaptureFeedback,
                     )
                   else
                     Semantics(
@@ -278,6 +321,18 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen> {
                 ),
               ),
             ],
+            Positioned.fill(
+              child: IgnorePointer(
+                child: FadeTransition(
+                  key: const Key('capture_feedback_flash_fade'),
+                  opacity: _feedbackFlashOpacity,
+                  child: Container(
+                    key: const Key('capture_feedback_flash_overlay'),
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

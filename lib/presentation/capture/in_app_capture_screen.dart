@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../app/di.dart';
 import '../../data/device/device_camera_source.dart';
@@ -20,9 +23,30 @@ class InAppCaptureScreen extends StatefulWidget {
   State<InAppCaptureScreen> createState() => _InAppCaptureScreenState();
 }
 
-class _InAppCaptureScreenState extends State<InAppCaptureScreen> {
+class _InAppCaptureScreenState extends State<InAppCaptureScreen>
+    with SingleTickerProviderStateMixin {
   bool _cameraPermissionDenied = false;
   bool _cameraReady = false;
+  late final AnimationController _feedbackFlashController;
+  late final Animation<double> _feedbackFlashOpacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _feedbackFlashController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    )..value = 1;
+    _feedbackFlashOpacity = Tween<double>(
+      begin: 0.85,
+      end: 0,
+    ).animate(
+      CurvedAnimation(
+        parent: _feedbackFlashController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+  }
 
   CameraSource get _cameraSource =>
       widget.cameraSource ?? getIt<CameraSource>();
@@ -41,6 +65,25 @@ class _InAppCaptureScreenState extends State<InAppCaptureScreen> {
 
   Future<void> _onCaptureComplete(CaptureResult result) async {
     Navigator.of(context).pop<CaptureResult>(result);
+  }
+
+  @override
+  void dispose() {
+    _feedbackFlashController.dispose();
+    super.dispose();
+  }
+
+  void _onCaptureFeedback(CaptureFeedbackEvent event) {
+    _feedbackFlashController.forward(from: 0);
+    switch (event) {
+      case CaptureFeedbackEvent.photo:
+      case CaptureFeedbackEvent.videoStart:
+        unawaited(HapticFeedback.lightImpact());
+        return;
+      case CaptureFeedbackEvent.videoStop:
+        unawaited(HapticFeedback.selectionClick());
+        return;
+    }
   }
 
   void _onError(String message) {
@@ -78,6 +121,19 @@ class _InAppCaptureScreenState extends State<InAppCaptureScreen> {
                 canInteract: _canInteract,
                 onCaptureComplete: _onCaptureComplete,
                 onError: _onError,
+                onCaptureFeedback: _onCaptureFeedback,
+              ),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: FadeTransition(
+                  key: const Key('capture_feedback_flash_fade'),
+                  opacity: _feedbackFlashOpacity,
+                  child: Container(
+                    key: const Key('capture_feedback_flash_overlay'),
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
           ],

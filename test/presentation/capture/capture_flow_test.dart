@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -37,8 +38,21 @@ void main() {
   late CatalogRepository catalogRepo;
   late FakeMediaUploader fakeMediaUploader;
   late FakeSyncGateway fakeGateway;
+  final hapticCalls = <String>[];
 
   setUp(() async {
+    hapticCalls.clear();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, (methodCall) async {
+      if (methodCall.method == 'HapticFeedback.vibrate') {
+        final type = methodCall.arguments;
+        if (type is String) {
+          hapticCalls.add(type);
+        }
+      }
+      return null;
+    });
+
     db = AppDatabase.forTesting(NativeDatabase.memory());
     fakeMediaUploader = FakeMediaUploader();
     fakeGateway = FakeSyncGateway(mediaUploader: fakeMediaUploader);
@@ -85,6 +99,8 @@ void main() {
   });
 
   tearDown(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(SystemChannels.platform, null);
     await getIt.reset();
     await db.close();
   });
@@ -386,6 +402,7 @@ void main() {
       status: 'pending',
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'test-operator-uid',
     );
     fakeGateway.confirmedIds = ['pending-home'];
 
@@ -412,6 +429,7 @@ void main() {
       status: 'pending',
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'test-operator-uid',
     );
 
     final countingRunner = CountingOccurrenceSyncForegroundRunner(
@@ -514,6 +532,45 @@ void main() {
     expect(find.byKey(const Key('capture_mode_toggle')), findsOneWidget);
     expect(find.text('Foto'), findsOneWidget);
     expect(find.text('Vídeo'), findsOneWidget);
+  });
+
+  testWidgets('feedback visual e haptic dispara em foto e vídeo', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CaptureHomeScreen(captureService: captureService),
+      ),
+    );
+
+    final overlayFadeFinder = find.byKey(const Key('capture_feedback_flash_fade'));
+
+    FadeTransition overlay = tester.widget<FadeTransition>(overlayFadeFinder);
+    expect(overlay.opacity.value, 0);
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pump();
+    overlay = tester.widget<FadeTransition>(overlayFadeFinder);
+    expect(overlay.opacity.value, greaterThan(0));
+    await tester.pump(const Duration(milliseconds: 160));
+    overlay = tester.widget<FadeTransition>(overlayFadeFinder);
+    expect(overlay.opacity.value, 0);
+    expect(hapticCalls, contains('HapticFeedbackType.lightImpact'));
+
+    await tester.tap(find.text('Vídeo'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pump();
+    overlay = tester.widget<FadeTransition>(overlayFadeFinder);
+    expect(overlay.opacity.value, greaterThan(0));
+    await tester.pump(const Duration(milliseconds: 160));
+    expect(hapticCalls, contains('HapticFeedbackType.lightImpact'));
+
+    await tester.tap(find.byKey(const Key('capture_button')));
+    await tester.pump();
+    overlay = tester.widget<FadeTransition>(overlayFadeFinder);
+    expect(overlay.opacity.value, greaterThan(0));
+    await tester.pumpAndSettle();
+    expect(hapticCalls, contains('HapticFeedbackType.selectionClick'));
   });
 
   testWidgets('video recording attaches video media to draft without leaving preview',
