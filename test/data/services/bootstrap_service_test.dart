@@ -40,7 +40,7 @@ void main() {
       httpClient: httpClient,
     );
     return BootstrapService(
-      OperatorProfileRepository(db, api),
+      OperatorProfileRepository(db, api, FakeAuthGateway(userId: 'user-1')),
       CatalogSyncService(db, api),
     );
   }

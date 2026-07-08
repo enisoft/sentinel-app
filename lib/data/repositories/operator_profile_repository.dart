@@ -2,27 +2,31 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../../domain/gateways/auth_gateway.dart';
 import '../local/app_database.dart';
 import '../remote/api_client.dart';
 import '../../domain/models/operator_profile.dart' as domain;
 import '../../domain/models/operator_zone.dart';
 
 class OperatorProfileRepository {
-  OperatorProfileRepository(this._db, this._api);
+  OperatorProfileRepository(this._db, this._api, this._auth);
 
   final AppDatabase _db;
   final ApiClient _api;
+  final AuthGateway _auth;
 
   Stream<domain.OperatorProfile?> watchCached() {
-    return _db
-        .select(_db.cachedOperatorProfiles)
-        .watchSingleOrNull()
+    return _db.select(_db.cachedOperatorProfiles)
+        .watch()
+        .map(_pickCachedRowForCurrentUser)
         .map((row) => row == null ? null : _mapRow(row));
   }
 
   Future<domain.OperatorProfile?> getCached() async {
-    final row =
-        await _db.select(_db.cachedOperatorProfiles).getSingleOrNull();
+    final row = await _db
+        .select(_db.cachedOperatorProfiles)
+        .get()
+        .then(_pickCachedRowForCurrentUser);
     if (row == null) return null;
     return _mapRow(row);
   }
@@ -42,6 +46,17 @@ class OperatorProfileRepository {
           ),
         );
     return profile;
+  }
+
+  CachedOperatorProfile? _pickCachedRowForCurrentUser(
+    List<CachedOperatorProfile> rows,
+  ) {
+    final currentUserId = _auth.currentUserId;
+    if (currentUserId == null) return null;
+    for (final row in rows) {
+      if (row.id == currentUserId) return row;
+    }
+    return null;
   }
 
   domain.OperatorProfile _mapRow(CachedOperatorProfile row) {

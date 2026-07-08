@@ -3,6 +3,11 @@
 .env.*
 !.env.example
 
+# Dumps locais de banco (dispositivo / debug)
+*.db
+*.sqlite
+*.sqlite3
+
 # Estado local Supabase
 supabase/.branches/
 supabase/.temp/

@@ -50,7 +50,7 @@ void main() {
       }),
     );
 
-    final repo = OperatorProfileRepository(db, api);
+    final repo = OperatorProfileRepository(db, api, FakeAuthGateway(userId: 'user-1'));
     final profile = await repo.fetchAndCache();
 
     expect(profile.name, 'Operador Silva');
@@ -61,5 +61,37 @@ void main() {
     expect(cached?.zones, hasLength(1));
     expect(cached?.zones.single.nome, 'Manaus');
     expect(cached?.defaultZoneId, 'zona-1');
+  });
+
+  test('getCached returns null when cache has only another operator', () async {
+    final api = ApiClient(
+      config: config,
+      authGateway: FakeAuthGateway(),
+      httpClient: MockClient((request) async {
+        return http.Response(
+          jsonEncode({
+            'id': 'user-2',
+            'name': 'Operador Outro',
+            'role': 'agente',
+            'municipality_id': 'mun-2',
+            'photo_path': null,
+            'zones': const [],
+            'default_zone_id': null,
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+
+    final repo = OperatorProfileRepository(
+      db,
+      api,
+      FakeAuthGateway(userId: 'user-1'),
+    );
+    await repo.fetchAndCache();
+
+    final cached = await repo.getCached();
+    expect(cached, isNull);
   });
 }

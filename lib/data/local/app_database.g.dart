@@ -255,6 +255,17 @@ class $OccurrencesTable extends Occurrences
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _reportedByMeta = const VerificationMeta(
+    'reportedBy',
+  );
+  @override
+  late final GeneratedColumn<String> reportedBy = GeneratedColumn<String>(
+    'reported_by',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -280,6 +291,7 @@ class $OccurrencesTable extends Occurrences
     syncedAt,
     lastAttemptAt,
     failedReason,
+    reportedBy,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -450,6 +462,12 @@ class $OccurrencesTable extends Occurrences
         ),
       );
     }
+    if (data.containsKey('reported_by')) {
+      context.handle(
+        _reportedByMeta,
+        reportedBy.isAcceptableOrUnknown(data['reported_by']!, _reportedByMeta),
+      );
+    }
     return context;
   }
 
@@ -555,6 +573,10 @@ class $OccurrencesTable extends Occurrences
         DriftSqlType.string,
         data['${effectivePrefix}failed_reason'],
       ),
+      reportedBy: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reported_by'],
+      ),
     );
   }
 
@@ -595,6 +617,9 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
   final DateTime? syncedAt;
   final DateTime? lastAttemptAt;
   final String? failedReason;
+
+  /// UID do operador que capturou (imutável após gravação; ENI-97).
+  final String? reportedBy;
   const Occurrence({
     required this.id,
     required this.title,
@@ -619,6 +644,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     this.syncedAt,
     this.lastAttemptAt,
     this.failedReason,
+    this.reportedBy,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -678,6 +704,9 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     if (!nullToAbsent || failedReason != null) {
       map['failed_reason'] = Variable<String>(failedReason);
     }
+    if (!nullToAbsent || reportedBy != null) {
+      map['reported_by'] = Variable<String>(reportedBy);
+    }
     return map;
   }
 
@@ -732,6 +761,9 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       failedReason: failedReason == null && nullToAbsent
           ? const Value.absent()
           : Value(failedReason),
+      reportedBy: reportedBy == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reportedBy),
     );
   }
 
@@ -764,6 +796,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       syncedAt: serializer.fromJson<DateTime?>(json['syncedAt']),
       lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
       failedReason: serializer.fromJson<String?>(json['failedReason']),
+      reportedBy: serializer.fromJson<String?>(json['reportedBy']),
     );
   }
   @override
@@ -793,6 +826,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       'syncedAt': serializer.toJson<DateTime?>(syncedAt),
       'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
       'failedReason': serializer.toJson<String?>(failedReason),
+      'reportedBy': serializer.toJson<String?>(reportedBy),
     };
   }
 
@@ -820,6 +854,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     Value<DateTime?> syncedAt = const Value.absent(),
     Value<DateTime?> lastAttemptAt = const Value.absent(),
     Value<String?> failedReason = const Value.absent(),
+    Value<String?> reportedBy = const Value.absent(),
   }) => Occurrence(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -848,6 +883,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
         ? lastAttemptAt.value
         : this.lastAttemptAt,
     failedReason: failedReason.present ? failedReason.value : this.failedReason,
+    reportedBy: reportedBy.present ? reportedBy.value : this.reportedBy,
   );
   Occurrence copyWithCompanion(OccurrencesCompanion data) {
     return Occurrence(
@@ -896,6 +932,9 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
       failedReason: data.failedReason.present
           ? data.failedReason.value
           : this.failedReason,
+      reportedBy: data.reportedBy.present
+          ? data.reportedBy.value
+          : this.reportedBy,
     );
   }
 
@@ -924,7 +963,8 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
           ..write('mediaUploadedAt: $mediaUploadedAt, ')
           ..write('syncedAt: $syncedAt, ')
           ..write('lastAttemptAt: $lastAttemptAt, ')
-          ..write('failedReason: $failedReason')
+          ..write('failedReason: $failedReason, ')
+          ..write('reportedBy: $reportedBy')
           ..write(')'))
         .toString();
   }
@@ -954,6 +994,7 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
     syncedAt,
     lastAttemptAt,
     failedReason,
+    reportedBy,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -981,7 +1022,8 @@ class Occurrence extends DataClass implements Insertable<Occurrence> {
           other.mediaUploadedAt == this.mediaUploadedAt &&
           other.syncedAt == this.syncedAt &&
           other.lastAttemptAt == this.lastAttemptAt &&
-          other.failedReason == this.failedReason);
+          other.failedReason == this.failedReason &&
+          other.reportedBy == this.reportedBy);
 }
 
 class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
@@ -1008,6 +1050,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
   final Value<DateTime?> syncedAt;
   final Value<DateTime?> lastAttemptAt;
   final Value<String?> failedReason;
+  final Value<String?> reportedBy;
   final Value<int> rowid;
   const OccurrencesCompanion({
     this.id = const Value.absent(),
@@ -1033,6 +1076,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     this.syncedAt = const Value.absent(),
     this.lastAttemptAt = const Value.absent(),
     this.failedReason = const Value.absent(),
+    this.reportedBy = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OccurrencesCompanion.insert({
@@ -1059,6 +1103,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     this.syncedAt = const Value.absent(),
     this.lastAttemptAt = const Value.absent(),
     this.failedReason = const Value.absent(),
+    this.reportedBy = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
@@ -1092,6 +1137,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     Expression<DateTime>? syncedAt,
     Expression<DateTime>? lastAttemptAt,
     Expression<String>? failedReason,
+    Expression<String>? reportedBy,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1118,6 +1164,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
       if (syncedAt != null) 'synced_at': syncedAt,
       if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
       if (failedReason != null) 'failed_reason': failedReason,
+      if (reportedBy != null) 'reported_by': reportedBy,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1146,6 +1193,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     Value<DateTime?>? syncedAt,
     Value<DateTime?>? lastAttemptAt,
     Value<String?>? failedReason,
+    Value<String?>? reportedBy,
     Value<int>? rowid,
   }) {
     return OccurrencesCompanion(
@@ -1172,6 +1220,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
       syncedAt: syncedAt ?? this.syncedAt,
       lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
       failedReason: failedReason ?? this.failedReason,
+      reportedBy: reportedBy ?? this.reportedBy,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1252,6 +1301,9 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
     if (failedReason.present) {
       map['failed_reason'] = Variable<String>(failedReason.value);
     }
+    if (reportedBy.present) {
+      map['reported_by'] = Variable<String>(reportedBy.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1284,6 +1336,7 @@ class OccurrencesCompanion extends UpdateCompanion<Occurrence> {
           ..write('syncedAt: $syncedAt, ')
           ..write('lastAttemptAt: $lastAttemptAt, ')
           ..write('failedReason: $failedReason, ')
+          ..write('reportedBy: $reportedBy, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5464,6 +5517,7 @@ typedef $$OccurrencesTableCreateCompanionBuilder =
       Value<DateTime?> syncedAt,
       Value<DateTime?> lastAttemptAt,
       Value<String?> failedReason,
+      Value<String?> reportedBy,
       Value<int> rowid,
     });
 typedef $$OccurrencesTableUpdateCompanionBuilder =
@@ -5491,6 +5545,7 @@ typedef $$OccurrencesTableUpdateCompanionBuilder =
       Value<DateTime?> syncedAt,
       Value<DateTime?> lastAttemptAt,
       Value<String?> failedReason,
+      Value<String?> reportedBy,
       Value<int> rowid,
     });
 
@@ -5648,6 +5703,11 @@ class $$OccurrencesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get reportedBy => $composableBuilder(
+    column: $table.reportedBy,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> occurrenceMediaRefs(
     Expression<bool> Function($$OccurrenceMediaTableFilterComposer f) f,
   ) {
@@ -5797,6 +5857,11 @@ class $$OccurrencesTableOrderingComposer
     column: $table.failedReason,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get reportedBy => $composableBuilder(
+    column: $table.reportedBy,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$OccurrencesTableAnnotationComposer
@@ -5900,6 +5965,11 @@ class $$OccurrencesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get reportedBy => $composableBuilder(
+    column: $table.reportedBy,
+    builder: (column) => column,
+  );
+
   Expression<T> occurrenceMediaRefs<T extends Object>(
     Expression<T> Function($$OccurrenceMediaTableAnnotationComposer a) f,
   ) {
@@ -5977,6 +6047,7 @@ class $$OccurrencesTableTableManager
                 Value<DateTime?> syncedAt = const Value.absent(),
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
                 Value<String?> failedReason = const Value.absent(),
+                Value<String?> reportedBy = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OccurrencesCompanion(
                 id: id,
@@ -6002,6 +6073,7 @@ class $$OccurrencesTableTableManager
                 syncedAt: syncedAt,
                 lastAttemptAt: lastAttemptAt,
                 failedReason: failedReason,
+                reportedBy: reportedBy,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6029,6 +6101,7 @@ class $$OccurrencesTableTableManager
                 Value<DateTime?> syncedAt = const Value.absent(),
                 Value<DateTime?> lastAttemptAt = const Value.absent(),
                 Value<String?> failedReason = const Value.absent(),
+                Value<String?> reportedBy = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OccurrencesCompanion.insert(
                 id: id,
@@ -6054,6 +6127,7 @@ class $$OccurrencesTableTableManager
                 syncedAt: syncedAt,
                 lastAttemptAt: lastAttemptAt,
                 failedReason: failedReason,
+                reportedBy: reportedBy,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
