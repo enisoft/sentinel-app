@@ -200,7 +200,7 @@ Future<void> _registerCore(
   }
 
   getIt.registerLazySingleton(
-    () => OperatorProfileRepository(getIt(), getIt()),
+    () => OperatorProfileRepository(getIt(), getIt(), getIt()),
   );
   getIt.registerLazySingleton(
     () => CatalogSyncService(getIt(), getIt()),
@@ -263,6 +263,8 @@ void _registerCaptureServices({
       cameraSource: getIt(),
       locationSource: getIt(),
       hashService: getIt(),
+      authGateway: getIt(),
+      operatorProfileRepository: getIt(),
     ),
   );
 }
@@ -282,6 +284,9 @@ class _UnimplementedAuthGateway implements AuthGateway {
 
   @override
   String? get accessToken => null;
+
+  @override
+  String? get currentUserId => null;
 
   @override
   String? get loginNotice => null;

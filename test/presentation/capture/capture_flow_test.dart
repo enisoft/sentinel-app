@@ -44,6 +44,7 @@ void main() {
     fakeGateway = FakeSyncGateway(mediaUploader: fakeMediaUploader);
     await configureDependenciesForTesting(
       db,
+      authGateway: FakeAuthGateway(),
       cameraSource: FakeCameraSource(),
       locationSource: FakeLocationSource(),
       hashService: FakeHashService(),

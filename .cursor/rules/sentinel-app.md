@@ -19,7 +19,8 @@ fonte da verdade (estão no repo de docs / referenciados):
 2. UUIDs são gerados no cliente; idempotência por id no sync.
 3. Respeitar a separação de fases: captura, upload (TUS) e UI não se misturam num
    mesmo PR gigante. A fronteira de rede fica atrás de uma interface (SyncGateway).
-4. reported_by / user_id NUNCA são definidos pelo app no payload — vêm do token no
-   backend. O app só envia o Bearer.
+4. `reported_by` é carimbado na captura (uid local) e enviado no payload de sync;
+   o backend respeita o valor na 1ª gravação (imutável depois). Lista local filtra
+   por dono; dados de outro uid permanecem no Drift mas não aparecem na UI.
 5. Mudança que afete o contrato de API deve ser sinalizada (impacta o backend).
 6. Stack: Flutter, Android, drift (persistência), state management conforme o README.

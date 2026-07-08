@@ -1,11 +1,13 @@
 import '../../core/capture/occurrence_confirm_text.dart';
 import '../../core/capture/occurrence_lifecycle_status.dart';
+import '../../domain/gateways/auth_gateway.dart';
 import '../../domain/models/capture_result.dart';
 import '../../domain/services/camera_source.dart';
 import '../../domain/services/hash_service.dart';
 import '../../domain/services/location_source.dart';
 import '../local/app_database.dart';
 import '../repositories/occurrence_repository.dart';
+import '../repositories/operator_profile_repository.dart';
 
 /// Orquestra o fluxo capture-first: captura → rascunho local → form → fila.
 class CaptureOccurrenceService {
@@ -14,15 +16,21 @@ class CaptureOccurrenceService {
     required CameraSource cameraSource,
     required LocationSource locationSource,
     required HashService hashService,
+    required AuthGateway authGateway,
+    required OperatorProfileRepository operatorProfileRepository,
   })  : _occurrenceRepository = occurrenceRepository,
         _cameraSource = cameraSource,
         _locationSource = locationSource,
-        _hashService = hashService;
+        _hashService = hashService,
+        _authGateway = authGateway,
+        _operatorProfileRepository = operatorProfileRepository;
 
   final OccurrenceRepository _occurrenceRepository;
   final CameraSource _cameraSource;
   final LocationSource _locationSource;
   final HashService _hashService;
+  final AuthGateway _authGateway;
+  final OperatorProfileRepository _operatorProfileRepository;
 
   /// Disparo: captura mídia + GPS + hash e persiste rascunho em `local_saved`.
   Future<CaptureDraftResult> captureDraft() async {
@@ -34,6 +42,7 @@ class CaptureOccurrenceService {
   Future<CaptureDraftResult> createDraftFromCapture(CaptureResult capture) async {
     final position = await _locationSource.getCurrentPosition();
     final contentHash = await _hashService.hashFile(capture.localPath);
+    final reportedBy = await _resolveOperatorUid();
 
     final occurrence = await _occurrenceRepository.createOccurrence(
       title: '',
@@ -44,6 +53,7 @@ class CaptureOccurrenceService {
       latitude: position?.latitude,
       longitude: position?.longitude,
       createdAt: capture.capturedAt,
+      reportedBy: reportedBy,
     );
 
     final media = await _occurrenceRepository.attachMedia(
@@ -171,6 +181,19 @@ class CaptureOccurrenceService {
       description: text.description,
       title: text.title,
       status: OccurrenceLifecycleStatus.pending,
+    );
+  }
+
+  /// UID do operador na sessão atual (JWT `sub` ou perfil cacheado offline).
+  Future<String> _resolveOperatorUid() async {
+    final fromAuth = _authGateway.currentUserId;
+    if (fromAuth != null) return fromAuth;
+
+    final cached = await _operatorProfileRepository.getCached();
+    if (cached != null) return cached.id;
+
+    throw StateError(
+      'Operador não identificado — impossível registrar captura.',
     );
   }
 }

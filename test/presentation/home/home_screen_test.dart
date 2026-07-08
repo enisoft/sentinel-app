@@ -58,6 +58,7 @@ void main() {
     final apiClient = _messagesApiClient();
     await configureDependenciesForTesting(
       db,
+      authGateway: FakeAuthGateway(),
       cameraSource: FakeCameraSource(),
       locationSource: FakeLocationSource(),
       hashService: FakeHashService(),
@@ -184,6 +185,7 @@ void main() {
       status: OccurrenceLifecycleStatus.draft,
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 1, 10),
+      reportedBy: 'test-operator-uid',
     );
     await occurrenceRepo.createOccurrence(
       id: 'pending-1',
@@ -192,6 +194,7 @@ void main() {
       status: OccurrenceLifecycleStatus.pending,
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 2, 11),
+      reportedBy: 'test-operator-uid',
     );
     await occurrenceRepo.createOccurrence(
       id: 'synced-1',
@@ -200,6 +203,7 @@ void main() {
       status: OccurrenceLifecycleStatus.pending,
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 3, 12),
+      reportedBy: 'test-operator-uid',
     );
     await occurrenceRepo.markMediaDone('synced-1');
     await occurrenceRepo.beginJsonSync('synced-1');
@@ -267,6 +271,7 @@ void main() {
       status: OccurrenceLifecycleStatus.draft,
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 1, 10),
+      reportedBy: 'test-operator-uid',
     );
     await occurrenceRepo.createOccurrence(
       id: 'synced-nav',
@@ -275,6 +280,7 @@ void main() {
       status: OccurrenceLifecycleStatus.pending,
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 2, 11),
+      reportedBy: 'test-operator-uid',
     );
     await occurrenceRepo.markMediaDone('synced-nav');
     await occurrenceRepo.beginJsonSync('synced-nav');
@@ -298,6 +304,44 @@ void main() {
     expect(find.text('Título sync'), findsNothing);
     expect(find.text('Descrição sync'), findsOneWidget);
     expect(find.byKey(const Key('confirm_button')), findsNothing);
+  });
+
+  testWidgets('list hides occurrences from another operator (ENI-97)', (tester) async {
+    await occurrenceRepo.createOccurrence(
+      id: 'mine-1',
+      title: 'Minha captura',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'test-operator-uid',
+    );
+    await occurrenceRepo.createOccurrence(
+      id: 'other-1',
+      title: 'Captura de outro',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 2),
+      reportedBy: 'other-operator-uid',
+    );
+    await occurrenceRepo.createOccurrence(
+      id: 'orphan-legacy',
+      title: 'Legada sem dono',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.draft,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 3),
+    );
+
+    await pumpHome(tester);
+
+    expect(find.byKey(const Key('occurrence_item_mine-1')), findsOneWidget);
+    expect(find.byKey(const Key('occurrence_item_other-1')), findsNothing);
+    expect(find.byKey(const Key('occurrence_item_orphan-legacy')), findsNothing);
+    expect(find.text('Minha captura'), findsOneWidget);
+    expect(find.text('Captura de outro'), findsNothing);
+    expect(find.text('Legada sem dono'), findsNothing);
   });
 
   test('occurrenceShortId keeps first six characters', () {

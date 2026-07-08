@@ -45,6 +45,7 @@ void main() {
       createdAt: createdAt,
       updatedAt: createdAt,
       createdLocalAt: DateTime.utc(2026, 6, 10, 14, 36),
+      reportedBy: 'test-operator-uid',
     );
 
     await occurrenceRepo.attachMedia(
@@ -91,7 +92,7 @@ void main() {
     final json = (capturedBody!['occurrences'] as List).single
         as Map<String, dynamic>;
     expect(json['id'], '550e8400-e29b-41d4-a716-446655440000');
-    expect(json.containsKey('reported_by'), isFalse);
+    expect(json['reported_by'], 'test-operator-uid');
     expect(
       (json['media'] as List).single,
       containsPair('path', 'occurrences/550e8400/photo1.jpg'),

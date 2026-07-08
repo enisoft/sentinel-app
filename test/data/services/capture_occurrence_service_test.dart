@@ -37,6 +37,7 @@ void main() {
 
     await configureDependenciesForTesting(
       db,
+      authGateway: FakeAuthGateway(),
       cameraSource: camera,
       locationSource: location,
       hashService: hashService,
@@ -85,6 +86,7 @@ void main() {
       expect(occurrence.status, 'draft');
       expect(occurrence.latitude, -25.5);
       expect(occurrence.longitude, -49.2);
+      expect(occurrence.reportedBy, 'test-operator-uid');
 
       final media = await occurrenceRepo.getMedia(occurrence.id);
       expect(media, hasLength(1));

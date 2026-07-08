@@ -38,6 +38,7 @@ class SyncPayloadSerializer {
       'updated_at': occurrence.updatedAt != null
           ? toContractIso8601(occurrence.updatedAt!)
           : null,
+      if (occurrence.reportedBy != null) 'reported_by': occurrence.reportedBy,
       'media': media.map(serializeOccurrenceMedia).toList(),
     };
   }

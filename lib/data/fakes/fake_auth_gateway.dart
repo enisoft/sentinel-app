@@ -8,6 +8,7 @@ import 'fake_network_reachability.dart';
 class FakeAuthGateway implements AuthGateway {
   FakeAuthGateway({
     this.token = 'test-jwt',
+    this.userId = 'test-operator-uid',
     bool signedIn = true,
     bool persistedSession = true,
     NetworkReachability? networkReachability,
@@ -21,6 +22,7 @@ class FakeAuthGateway implements AuthGateway {
   bool _canAccessApp;
   bool _manualSignOut = false;
   final String token;
+  final String userId;
   String? _loginNotice;
 
   final _sessionController = StreamController<bool>.broadcast();
@@ -48,6 +50,10 @@ class FakeAuthGateway implements AuthGateway {
 
   @override
   String? get accessToken => _signedIn ? token : null;
+
+  @override
+  String? get currentUserId =>
+      (_signedIn || _persistedSession) && !_manualSignOut ? userId : null;
 
   @override
   String? get loginNotice => _loginNotice;

@@ -34,6 +34,7 @@ class OccurrenceRepository {
     String? id,
     DateTime? createdLocalAt,
     DateTime? createdAt,
+    String? reportedBy,
   }) async {
     final now = createdLocalAt ?? DateTime.now().toUtc();
     final domainCreatedAt = createdAt ?? now;
@@ -56,6 +57,7 @@ class OccurrenceRepository {
       categoryId: Value(categoryId),
       zonaId: Value(zonaId),
       updatedAt: Value(updatedAt),
+      reportedBy: Value(reportedBy),
     );
 
     await _db.into(_db.occurrences).insert(companion);
@@ -106,6 +108,22 @@ class OccurrenceRepository {
     return (_db.select(_db.occurrences)
           ..orderBy([(t) => OrderingTerm.desc(t.createdLocalAt)]))
         .get();
+  }
+
+  /// Ocorrências do operador logado (ENI-97). Órfãs (`reported_by` null) ficam de fora.
+  Future<List<Occurrence>> listForOperator(String operatorUid) {
+    return (_db.select(_db.occurrences)
+          ..where((t) => t.reportedBy.equals(operatorUid))
+          ..orderBy([(t) => OrderingTerm.desc(t.createdLocalAt)]))
+        .get();
+  }
+
+  /// Capturas legadas sem dono atribuído (pré ENI-97).
+  Future<int> countOrphanOccurrences() async {
+    final rows = await (_db.select(_db.occurrences)
+          ..where((t) => t.reportedBy.isNull()))
+        .get();
+    return rows.length;
   }
 
   Future<List<OccurrenceMediaData>> getMedia(String occurrenceId) async {

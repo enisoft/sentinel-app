@@ -42,6 +42,7 @@ void main() {
         createdAt: createdAt,
         updatedAt: updatedAt,
         createdLocalAt: DateTime.utc(2026, 6, 10, 14, 36),
+        reportedBy: 'operator-sync-uid',
       );
 
       await occurrenceRepo.attachMedia(
@@ -93,6 +94,7 @@ void main() {
         'resolved_at': null,
         'created_at': '2026-06-10T14:35:00Z',
         'updated_at': '2026-06-10T14:35:00Z',
+        'reported_by': 'operator-sync-uid',
         'media': [
           {
             'id': '8f14e45f-ceea-467f-a0f8-5c3b2e1a9d00',
@@ -117,7 +119,6 @@ void main() {
         ],
       });
 
-      expect(json.containsKey('reported_by'), isFalse);
       expect(json.containsKey('assigned_to'), isFalse);
       expect(json.containsKey('synced_at'), isFalse);
       expect(json.containsKey('created_local_at'), isFalse);

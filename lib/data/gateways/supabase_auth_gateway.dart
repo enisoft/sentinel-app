@@ -51,6 +51,9 @@ class SupabaseAuthGateway implements AuthGateway {
   String? get accessToken => _client.auth.currentSession?.accessToken;
 
   @override
+  String? get currentUserId => _client.auth.currentUser?.id;
+
+  @override
   String? get loginNotice => _loginNotice;
 
   @override

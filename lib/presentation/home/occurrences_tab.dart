@@ -9,6 +9,7 @@ import '../../data/local/app_database.dart';
 import '../../data/repositories/occurrence_repository.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
+import '../../domain/gateways/auth_gateway.dart';
 import '../capture/occurrence_draft_form_screen.dart';
 import 'occurrence_detail_screen.dart';
 
@@ -20,6 +21,7 @@ class OccurrencesTab extends StatefulWidget {
     this.occurrenceRepository,
     this.syncCoordinator,
     this.syncForegroundRunner,
+    this.authGateway,
   });
 
   /// Incrementado pela home ao voltar da captura para recarregar a lista.
@@ -28,6 +30,7 @@ class OccurrencesTab extends StatefulWidget {
   final OccurrenceRepository? occurrenceRepository;
   final OccurrenceSyncCoordinator? syncCoordinator;
   final OccurrenceSyncForegroundRunner? syncForegroundRunner;
+  final AuthGateway? authGateway;
 
   @override
   State<OccurrencesTab> createState() => _OccurrencesTabState();
@@ -38,6 +41,7 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
   late final OccurrenceRepository _occurrenceRepository;
   late final OccurrenceSyncCoordinator _syncCoordinator;
   late final OccurrenceSyncForegroundRunner _syncForegroundRunner;
+  late final AuthGateway _authGateway;
 
   @override
   void initState() {
@@ -48,6 +52,7 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
         widget.syncCoordinator ?? getIt<OccurrenceSyncCoordinator>();
     _syncForegroundRunner =
         widget.syncForegroundRunner ?? getIt<OccurrenceSyncForegroundRunner>();
+    _authGateway = widget.authGateway ?? getIt<AuthGateway>();
     _syncCoordinator.state.addListener(_onSyncStateChanged);
     _load();
   }
@@ -71,7 +76,10 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
   }
 
   Future<void> _load() async {
-    final items = await _occurrenceRepository.listAll();
+    final operatorUid = _authGateway.currentUserId;
+    final items = operatorUid == null
+        ? const <Occurrence>[]
+        : await _occurrenceRepository.listForOperator(operatorUid);
     if (!mounted) return;
     setState(() => _items = items);
   }

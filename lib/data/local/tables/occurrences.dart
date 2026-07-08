@@ -27,6 +27,8 @@ class Occurrences extends Table {
   DateTimeColumn get syncedAt => dateTime().nullable()();
   DateTimeColumn get lastAttemptAt => dateTime().nullable()();
   TextColumn get failedReason => text().nullable()();
+  /// UID do operador que capturou (imutável após gravação; ENI-97).
+  TextColumn get reportedBy => text().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

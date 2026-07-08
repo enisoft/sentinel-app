@@ -12,6 +12,9 @@ abstract class AuthGateway {
 
   String? get accessToken;
 
+  /// UID do operador logado (claim `sub` / id do `/me`). Null sem sessão.
+  String? get currentUserId;
+
   /// Aviso one-shot para exibir na próxima tela de login (ex.: sessão expirada).
   String? get loginNotice;
 
