@@ -4,9 +4,11 @@ import '../../app/di.dart';
 import '../../core/capture/occurrence_lifecycle_status.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
 import '../../core/sync/sync_foreground_notification_text.dart';
+import '../../core/sync/sync_pending_messages.dart';
 import '../../core/sync/sync_state.dart';
 import '../../data/local/app_database.dart';
 import '../../data/repositories/occurrence_repository.dart';
+import '../../data/repositories/sync_queue_repository.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../domain/gateways/auth_gateway.dart';
@@ -22,6 +24,7 @@ class OccurrencesTab extends StatefulWidget {
     this.syncCoordinator,
     this.syncForegroundRunner,
     this.authGateway,
+    this.syncQueueRepository,
   });
 
   /// Incrementado pela home ao voltar da captura para recarregar a lista.
@@ -31,6 +34,7 @@ class OccurrencesTab extends StatefulWidget {
   final OccurrenceSyncCoordinator? syncCoordinator;
   final OccurrenceSyncForegroundRunner? syncForegroundRunner;
   final AuthGateway? authGateway;
+  final SyncQueueRepository? syncQueueRepository;
 
   @override
   State<OccurrencesTab> createState() => _OccurrencesTabState();
@@ -38,10 +42,13 @@ class OccurrencesTab extends StatefulWidget {
 
 class _OccurrencesTabState extends State<OccurrencesTab> {
   List<Occurrence> _items = const [];
+  int _ownPendingCount = 0;
+  int _otherOperatorPendingCount = 0;
   late final OccurrenceRepository _occurrenceRepository;
   late final OccurrenceSyncCoordinator _syncCoordinator;
   late final OccurrenceSyncForegroundRunner _syncForegroundRunner;
   late final AuthGateway _authGateway;
+  late final SyncQueueRepository _syncQueueRepository;
 
   @override
   void initState() {
@@ -53,6 +60,8 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
     _syncForegroundRunner =
         widget.syncForegroundRunner ?? getIt<OccurrenceSyncForegroundRunner>();
     _authGateway = widget.authGateway ?? getIt<AuthGateway>();
+    _syncQueueRepository =
+        widget.syncQueueRepository ?? getIt<SyncQueueRepository>();
     _syncCoordinator.state.addListener(_onSyncStateChanged);
     _load();
   }
@@ -80,8 +89,19 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
     final items = operatorUid == null
         ? const <Occurrence>[]
         : await _occurrenceRepository.listForOperator(operatorUid);
+    final ownPending = operatorUid == null
+        ? 0
+        : await _syncQueueRepository.countOwnPendingForOperator(operatorUid);
+    final otherPending = operatorUid == null
+        ? 0
+        : await _syncQueueRepository
+            .countPendingOccurrencesForOtherOperators(operatorUid);
     if (!mounted) return;
-    setState(() => _items = items);
+    setState(() {
+      _items = items;
+      _ownPendingCount = ownPending;
+      _otherOperatorPendingCount = otherPending;
+    });
   }
 
   Future<void> _onSyncNow() async {
@@ -134,7 +154,7 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
 
               return Column(
                 children: [
-                  if (syncState.pendingCount > 0)
+                  if (_ownPendingCount > 0)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Container(
@@ -148,12 +168,38 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          '${syncState.pendingCount} pendente(s)',
+                          SyncPendingMessages.ownPendingBadge(_ownPendingCount),
                           style:
                               Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
+                        ),
+                      ),
+                    ),
+                  if (_otherOperatorPendingCount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Container(
+                        key: const Key('other_operator_pending_badge'),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blueGrey.shade700,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          SyncPendingMessages.otherOperatorPending(
+                            _otherOperatorPendingCount,
+                          ),
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ),

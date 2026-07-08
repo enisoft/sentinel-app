@@ -62,7 +62,7 @@ void main() {
   Future<void> seedCachedProfile() async {
     await db.into(db.cachedOperatorProfiles).insertOnConflictUpdate(
           CachedOperatorProfilesCompanion.insert(
-            id: 'user-1',
+            id: 'test-operator-uid',
             name: 'Operador',
             role: 'agente',
             municipalityId: const Value('mun-1'),
@@ -164,6 +164,7 @@ void main() {
       status: 'pending',
       priority: 'medium',
       occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'test-operator-uid',
     );
   }
 
@@ -179,7 +180,7 @@ void main() {
           if (path.endsWith('/me')) {
             return http.Response(
               jsonEncode({
-                'id': 'user-1',
+                'id': 'test-operator-uid',
                 'name': 'Operador',
                 'role': 'agente',
                 'municipality_id': 'mun-1',
@@ -239,7 +240,7 @@ void main() {
         if (path.endsWith('/me')) {
           return http.Response(
             jsonEncode({
-              'id': 'user-1',
+              'id': 'test-operator-uid',
               'name': 'Operador',
               'role': 'agente',
               'municipality_id': 'mun-1',

@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentinel_app/app/di.dart';
+import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
 import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
 import 'package:sentinel_app/data/fakes/fake_location_source.dart';
@@ -39,7 +40,7 @@ void main() {
   }) async {
     await db.into(db.cachedOperatorProfiles).insertOnConflictUpdate(
           CachedOperatorProfilesCompanion.insert(
-            id: 'user-1',
+            id: 'test-operator-uid',
             name: 'Operador',
             role: 'agente',
             municipalityId: const Value('mun-1'),
@@ -75,6 +76,7 @@ void main() {
     db = AppDatabase.forTesting(NativeDatabase.memory());
     await configureDependenciesForTesting(
       db,
+      authGateway: FakeAuthGateway(),
       cameraSource: FakeCameraSource(),
       locationSource: FakeLocationSource(),
       hashService: FakeHashService(),

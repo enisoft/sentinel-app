@@ -10,6 +10,7 @@ import 'package:sentinel_app/core/capture/occurrence_lifecycle_status.dart';
 import 'package:sentinel_app/core/config/app_config.dart';
 import 'package:sentinel_app/core/messages/message_recipient_state.dart';
 import 'package:sentinel_app/core/sync/sync_state.dart';
+import 'package:sentinel_app/core/sync/sync_pending_messages.dart';
 import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
 import 'package:sentinel_app/data/fakes/fake_camera_source.dart';
 import 'package:sentinel_app/data/fakes/fake_hash_service.dart';
@@ -26,6 +27,8 @@ import 'package:sentinel_app/presentation/home/home_screen.dart';
 import 'package:sentinel_app/presentation/home/occurrence_detail_screen.dart';
 import 'package:sentinel_app/presentation/home/occurrences_tab.dart';
 import 'package:sentinel_app/presentation/settings/settings_screen.dart';
+
+import '../../support/counting_occurrence_sync_foreground_runner.dart';
 
 ApiClient _messagesApiClient() {
   return ApiClient(
@@ -342,6 +345,139 @@ void main() {
     expect(find.text('Minha captura'), findsOneWidget);
     expect(find.text('Captura de outro'), findsNothing);
     expect(find.text('Legada sem dono'), findsNothing);
+  });
+
+  testWidgets('logout with own pending shows dialog; without pending signs out directly',
+      (tester) async {
+    final auth = FakeAuthGateway();
+    await occurrenceRepo.createOccurrence(
+      id: 'logout-pending',
+      title: 'Pendente',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'test-operator-uid',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(authGateway: auth),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('logout_pending_dialog')), findsOneWidget);
+    expect(
+      find.text(SyncPendingMessages.logoutDialogContent(1)),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('logout_pending_cancel')));
+    await tester.pumpAndSettle();
+    expect(auth.isSignedIn, isTrue);
+    expect(find.byKey(const Key('home_screen')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('logout_pending_sign_out')));
+    await tester.pumpAndSettle();
+    expect(auth.isSignedIn, isFalse);
+  });
+
+  testWidgets('logout without own pending signs out even if other operator has pending',
+      (tester) async {
+    final auth = FakeAuthGateway();
+    await occurrenceRepo.createOccurrence(
+      id: 'other-only',
+      title: 'De outro',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'other-operator-uid',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: HomeScreen(authGateway: auth)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('logout_pending_dialog')), findsNothing);
+    expect(auth.isSignedIn, isFalse);
+  });
+
+  testWidgets('logout sync now triggers foreground runner and stays signed in',
+      (tester) async {
+    final auth = FakeAuthGateway();
+    final countingRunner = installCountingForegroundRunner();
+    await occurrenceRepo.createOccurrence(
+      id: 'logout-sync',
+      title: 'Pendente',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'test-operator-uid',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: HomeScreen(
+          authGateway: auth,
+          syncForegroundRunner: countingRunner,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('logout_button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('logout_pending_sync')));
+    await tester.pumpAndSettle();
+
+    expect(auth.isSignedIn, isTrue);
+    expect(countingRunner.runIfPendingCallCount, 1);
+    expect(find.byKey(const Key('home_screen')), findsOneWidget);
+  });
+
+  testWidgets('pending badges separate own from other operator (ENI-101)',
+      (tester) async {
+    await occurrenceRepo.createOccurrence(
+      id: 'mine-pending',
+      title: 'Minha',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 1),
+      reportedBy: 'test-operator-uid',
+    );
+    await occurrenceRepo.createOccurrence(
+      id: 'other-pending',
+      title: 'De outro',
+      description: 'd',
+      status: OccurrenceLifecycleStatus.pending,
+      priority: 'medium',
+      occurredAt: DateTime.utc(2026, 1, 2),
+      reportedBy: 'other-operator-uid',
+    );
+
+    await pumpHome(tester);
+
+    expect(find.byKey(const Key('pending_sync_badge')), findsOneWidget);
+    expect(find.text('1 pendente(s)'), findsOneWidget);
+    expect(find.byKey(const Key('other_operator_pending_badge')), findsOneWidget);
+    expect(
+      find.text(SyncPendingMessages.otherOperatorPending(1)),
+      findsOneWidget,
+    );
+    expect(find.text('De outro'), findsNothing);
   });
 
   test('occurrenceShortId keeps first six characters', () {

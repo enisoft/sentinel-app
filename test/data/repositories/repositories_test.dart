@@ -331,5 +331,69 @@ void main() {
 
       await subscription.cancel();
     });
+
+    test('pending counts split by operator uid (ENI-101)', () async {
+      const operatorA = 'operator-a';
+      const operatorB = 'operator-b';
+
+      await occurrenceRepo.createOccurrence(
+        id: 'own-1',
+        title: 'A1',
+        description: 'd',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 1),
+        reportedBy: operatorA,
+      );
+      await occurrenceRepo.createOccurrence(
+        id: 'own-2',
+        title: 'A2',
+        description: 'd',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 2),
+        reportedBy: operatorA,
+      );
+      await occurrenceRepo.createOccurrence(
+        id: 'other-1',
+        title: 'B1',
+        description: 'd',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 3),
+        reportedBy: operatorB,
+      );
+      await occurrenceRepo.createOccurrence(
+        id: 'orphan-1',
+        title: 'Orphan',
+        description: 'd',
+        status: 'pending',
+        priority: 'low',
+        occurredAt: DateTime.utc(2026, 1, 4),
+      );
+
+      expect(
+        await queueRepo.countPendingOccurrencesForOperator(operatorA),
+        2,
+      );
+      expect(
+        await queueRepo.countPendingOccurrencesForOtherOperators(operatorA),
+        2,
+      );
+      expect(await queueRepo.countOwnPendingForOperator(operatorA), 2);
+
+      await checkInRepo.createCheckIn(
+        id: 'ci-own',
+        latitude: 1,
+        longitude: 2,
+        accuracy: 3,
+        capturedAt: DateTime.utc(2026, 1, 5),
+      );
+      expect(await queueRepo.countOwnPendingForOperator(operatorA), 3);
+      expect(
+        await queueRepo.countPendingOccurrencesForOtherOperators(operatorB),
+        3,
+      );
+    });
   });
 }

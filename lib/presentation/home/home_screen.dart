@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
+import '../../core/sync/sync_pending_messages.dart';
 import '../../data/repositories/message_repository.dart';
+import '../../data/repositories/sync_queue_repository.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../domain/gateways/auth_gateway.dart';
@@ -19,6 +21,7 @@ class HomeScreen extends StatefulWidget {
     this.syncCoordinator,
     this.syncForegroundRunner,
     this.messageRepository,
+    this.syncQueueRepository,
     this.catalogSyncWarning,
     this.onRetryCatalogSync,
   });
@@ -27,6 +30,7 @@ class HomeScreen extends StatefulWidget {
   final OccurrenceSyncCoordinator? syncCoordinator;
   final OccurrenceSyncForegroundRunner? syncForegroundRunner;
   final MessageRepository? messageRepository;
+  final SyncQueueRepository? syncQueueRepository;
   final String? catalogSyncWarning;
   final VoidCallback? onRetryCatalogSync;
 
@@ -40,6 +44,8 @@ class _HomeScreenState extends State<HomeScreen> {
   late final AuthGateway _auth;
   late final OccurrenceSyncCoordinator _syncCoordinator;
   late final MessageRepository _messageRepository;
+  late final SyncQueueRepository _syncQueueRepository;
+  late final OccurrenceSyncForegroundRunner _syncForegroundRunner;
 
   @override
   void initState() {
@@ -49,6 +55,10 @@ class _HomeScreenState extends State<HomeScreen> {
         widget.syncCoordinator ?? getIt<OccurrenceSyncCoordinator>();
     _messageRepository =
         widget.messageRepository ?? getIt<MessageRepository>();
+    _syncQueueRepository =
+        widget.syncQueueRepository ?? getIt<SyncQueueRepository>();
+    _syncForegroundRunner =
+        widget.syncForegroundRunner ?? getIt<OccurrenceSyncForegroundRunner>();
     _refreshMessagesSilently();
   }
 
@@ -61,7 +71,60 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _onLogout() async {
-    await _auth.signOut();
+    final operatorUid = _auth.currentUserId;
+    if (operatorUid == null) {
+      await _auth.signOut();
+      return;
+    }
+
+    final ownPending =
+        await _syncQueueRepository.countPendingOccurrencesForOperator(
+      operatorUid,
+    );
+    if (ownPending == 0) {
+      await _auth.signOut();
+      return;
+    }
+
+    if (!mounted) return;
+    final action = await showDialog<_LogoutPendingAction>(
+      context: context,
+      builder: (context) => AlertDialog(
+        key: const Key('logout_pending_dialog'),
+        title: const Text(SyncPendingMessages.logoutDialogTitle),
+        content: Text(SyncPendingMessages.logoutDialogContent(ownPending)),
+        actions: [
+          TextButton(
+            key: const Key('logout_pending_cancel'),
+            onPressed: () =>
+                Navigator.of(context).pop(_LogoutPendingAction.cancel),
+            child: const Text(SyncPendingMessages.logoutCancel),
+          ),
+          TextButton(
+            key: const Key('logout_pending_sign_out'),
+            onPressed: () =>
+                Navigator.of(context).pop(_LogoutPendingAction.signOutAnyway),
+            child: const Text(SyncPendingMessages.logoutSignOutAnyway),
+          ),
+          FilledButton(
+            key: const Key('logout_pending_sync'),
+            onPressed: () =>
+                Navigator.of(context).pop(_LogoutPendingAction.syncNow),
+            child: const Text(SyncPendingMessages.logoutSyncNow),
+          ),
+        ],
+      ),
+    );
+
+    switch (action) {
+      case _LogoutPendingAction.syncNow:
+        await _syncForegroundRunner.runIfPending();
+      case _LogoutPendingAction.signOutAnyway:
+        await _auth.signOut();
+      case _LogoutPendingAction.cancel:
+      case null:
+        break;
+    }
   }
 
   Future<void> _openSettings() async {
@@ -199,3 +262,5 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+enum _LogoutPendingAction { syncNow, signOutAnyway, cancel }

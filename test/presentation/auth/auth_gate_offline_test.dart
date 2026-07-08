@@ -45,7 +45,7 @@ void main() {
   Future<void> seedCachedProfile() async {
     await db.into(db.cachedOperatorProfiles).insertOnConflictUpdate(
           CachedOperatorProfilesCompanion.insert(
-            id: 'user-1',
+            id: 'test-operator-uid',
             name: 'Operador',
             role: 'agente',
             municipalityId: const Value('mun-1'),

@@ -59,6 +59,25 @@ class SyncQueueRepository {
     return PendingSyncSnapshot(occurrences: occurrences, checkIns: checkIns);
   }
 
+  /// Pendentes do operador logado (capturas com `reported_by` = uid).
+  Future<int> countPendingOccurrencesForOperator(String operatorUid) async {
+    final occurrences = await getPendingOccurrences();
+    return occurrences.where((o) => o.reportedBy == operatorUid).length;
+  }
+
+  /// Pendentes de outro operador ou órfãs (`reported_by` ≠ uid logado).
+  Future<int> countPendingOccurrencesForOtherOperators(String operatorUid) async {
+    final occurrences = await getPendingOccurrences();
+    return occurrences.where((o) => o.reportedBy != operatorUid).length;
+  }
+
+  /// Badge próprio: capturas do operador + check-ins locais (sem `reported_by`).
+  Future<int> countOwnPendingForOperator(String operatorUid) async {
+    final ownOccurrences = await countPendingOccurrencesForOperator(operatorUid);
+    final checkIns = (await getPending()).checkIns.length;
+    return ownOccurrences + checkIns;
+  }
+
   /// Confirmadas (`pending`) ainda não sincronizadas, exceto falhas 422 permanentes.
   Future<List<Occurrence>> getPendingOccurrences() async {
     final rows = await (_db.select(_db.occurrences)
