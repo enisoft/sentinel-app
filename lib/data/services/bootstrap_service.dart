@@ -23,36 +23,17 @@ class BootstrapService {
 
   Future<BootstrapResult> run({bool serverUnreachable = false}) async {
     if (serverUnreachable) {
-      final cached = await _profileRepo.getCached();
-      if (cached == null) {
-        return const BootstrapResult(
-          profileLoaded: false,
-          catalogSynced: false,
-          catalogError: BootstrapMessages.offlineFirstAccess,
-        );
-      }
-      return const BootstrapResult(
-        profileLoaded: true,
-        catalogSynced: false,
-      );
+      return _offlineBootstrapResult();
     }
 
     try {
-      await _profileRepo.fetchAndCache();
+      await _profileRepo.fetchAndCacheForBootstrap();
     } on ApiException catch (e) {
       if (e.isUnauthorized) rethrow;
       if (e.isNetworkError) {
-        final cached = await _profileRepo.getCached();
-        if (cached == null) {
-          return const BootstrapResult(
-            profileLoaded: false,
-            catalogSynced: false,
-            catalogError: BootstrapMessages.offlineFirstAccess,
-          );
-        }
-      } else {
-        rethrow;
+        return _offlineBootstrapResult();
       }
+      rethrow;
     }
 
     final catalogResult = await _catalogSync.syncAll();
@@ -61,6 +42,21 @@ class BootstrapService {
       profileLoaded: true,
       catalogSynced: catalogResult.success,
       catalogError: catalogResult.error,
+    );
+  }
+
+  Future<BootstrapResult> _offlineBootstrapResult() async {
+    final cached = await _profileRepo.getCached();
+    if (cached == null) {
+      return const BootstrapResult(
+        profileLoaded: false,
+        catalogSynced: false,
+        catalogError: BootstrapMessages.offlineFirstAccess,
+      );
+    }
+    return const BootstrapResult(
+      profileLoaded: true,
+      catalogSynced: false,
     );
   }
 }

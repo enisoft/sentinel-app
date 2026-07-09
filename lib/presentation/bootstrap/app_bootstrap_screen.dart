@@ -59,6 +59,18 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
         } else if (!await _handleUnauthorized(e)) {
           return;
         }
+      } else if (e.isNetworkError) {
+        if (!mounted) return;
+        final cached = await getIt<OperatorProfileRepository>().getCached();
+        setState(() {
+          _result = BootstrapResult(
+            profileLoaded: cached != null,
+            catalogSynced: false,
+            catalogError: cached == null
+                ? BootstrapMessages.offlineFirstAccess
+                : null,
+          );
+        });
       } else {
         if (!mounted) return;
         setState(() {

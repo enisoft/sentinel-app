@@ -37,14 +37,18 @@ class ApiClient {
   final Duration _initialContactTimeout;
   final Duration _initialContactRetryBackoff;
 
-  Future<OperatorProfile> getMe() {
+  Future<OperatorProfile> getMe({bool useInitialContactRetry = true}) {
+    Future<OperatorProfile> fetch() async {
+      final response = await _get('/me', timeout: _initialContactTimeout);
+      return OperatorProfile.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    }
+
+    if (!useInitialContactRetry) return fetch();
+
     return withInitialContactRetry(
-      () async {
-        final response = await _get('/me', timeout: _initialContactTimeout);
-        return OperatorProfile.fromJson(
-          jsonDecode(response.body) as Map<String, dynamic>,
-        );
-      },
+      fetch,
       backoff: _initialContactRetryBackoff,
     );
   }

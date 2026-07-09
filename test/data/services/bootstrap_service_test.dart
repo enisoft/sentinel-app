@@ -58,13 +58,17 @@ void main() {
         );
   }
 
-  test('network error on /me with cached profile enters app', () async {
+  test('network error on /me with cached profile enters app without catalog sync',
+      () async {
     await seedCachedProfile();
 
     final service = buildService(
       MockClient((request) async {
         if (request.url.path.endsWith('/me')) {
           throw const SocketException('Network is unreachable');
+        }
+        if (request.url.path.contains('/catalog/')) {
+          fail('catalog should not be called when /me network fails');
         }
         return http.Response('', 404);
       }),
@@ -74,6 +78,28 @@ void main() {
 
     expect(result.profileLoaded, isTrue);
     expect(result.catalogSynced, isFalse);
+    expect(result.catalogError, null);
+  });
+
+  test('408 on /me without cache shows offline message', () async {
+    final api = ApiClient(
+      config: config,
+      authGateway: FakeAuthGateway(),
+      initialContactTimeout: const Duration(milliseconds: 50),
+      httpClient: MockClient((_) async {
+        await Future<void>.delayed(const Duration(seconds: 1));
+        return http.Response('', 200);
+      }),
+    );
+    final service = BootstrapService(
+      OperatorProfileRepository(db, api, FakeAuthGateway(userId: 'user-1')),
+      CatalogSyncService(db, api),
+    );
+
+    final result = await service.run();
+
+    expect(result.profileLoaded, isFalse);
+    expect(result.catalogError, BootstrapMessages.offlineFirstAccess);
   });
 
   test('401 on /me propagates for signOut', () async {

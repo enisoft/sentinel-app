@@ -33,6 +33,18 @@ class OperatorProfileRepository {
 
   Future<domain.OperatorProfile> fetchAndCache() async {
     final profile = await _api.getMe();
+    await _persist(profile);
+    return profile;
+  }
+
+  /// Cold start: uma tentativa só (sem retry) para falhar rápido se API down.
+  Future<domain.OperatorProfile> fetchAndCacheForBootstrap() async {
+    final profile = await _api.getMe(useInitialContactRetry: false);
+    await _persist(profile);
+    return profile;
+  }
+
+  Future<void> _persist(domain.OperatorProfile profile) async {
     await _db.into(_db.cachedOperatorProfiles).insertOnConflictUpdate(
           CachedOperatorProfilesCompanion.insert(
             id: profile.id,
@@ -45,7 +57,6 @@ class OperatorProfileRepository {
             cachedAt: DateTime.now().toUtc(),
           ),
         );
-    return profile;
   }
 
   CachedOperatorProfile? _pickCachedRowForCurrentUser(
