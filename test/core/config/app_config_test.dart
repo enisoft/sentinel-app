@@ -33,4 +33,34 @@ void main() {
 
     expect(config.syncDebugUploadDelaySeconds, 0);
   });
+
+  test('fromMap defaults TUS stall timeout to 25 seconds', () {
+    final config = AppConfig.fromMap({
+      'SUPABASE_URL': 'http://localhost:54321',
+      'SUPABASE_ANON_KEY': 'key',
+      'API_BASE_URL': 'http://localhost:8000/api/v1',
+    });
+
+    expect(config.tusUploadStallTimeoutSeconds, 25);
+    expect(config.syncDrainCycleTimeoutMinutes, 30);
+    expect(config.syncInitialContactTimeoutSeconds, 10);
+    expect(config.syncInitialContactRetryBackoffSeconds, 3);
+  });
+
+  test('fromMap parses ENI-105 timeout env vars', () {
+    final config = AppConfig.fromMap({
+      'SUPABASE_URL': 'http://localhost:54321',
+      'SUPABASE_ANON_KEY': 'key',
+      'API_BASE_URL': 'http://localhost:8000/api/v1',
+      'TUS_UPLOAD_STALL_TIMEOUT_SECONDS': '40',
+      'SYNC_DRAIN_CYCLE_TIMEOUT_MINUTES': '15',
+      'SYNC_INITIAL_CONTACT_TIMEOUT_SECONDS': '8',
+      'SYNC_INITIAL_CONTACT_RETRY_BACKOFF_SECONDS': '2',
+    });
+
+    expect(config.tusUploadStallTimeoutSeconds, 40);
+    expect(config.syncDrainCycleTimeoutMinutes, 15);
+    expect(config.syncInitialContactTimeoutSeconds, 8);
+    expect(config.syncInitialContactRetryBackoffSeconds, 2);
+  });
 }

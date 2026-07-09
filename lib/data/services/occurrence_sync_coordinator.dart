@@ -15,6 +15,9 @@ abstract class OccurrenceSyncCoordinator {
 
   void clearSyncProgress();
 
+  /// Libera guard de reentrância após timeout externo no drain (ENI-105).
+  void recoverFromExternalTimeout();
+
   void dispose();
 }
 
@@ -24,8 +27,11 @@ class DefaultOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
   DefaultOccurrenceSyncCoordinator({
     required OccurrenceSyncService syncService,
     required SyncQueueRepository queueRepository,
+    Duration? syncCycleTimeout,
   })  : _syncService = syncService,
-        _queueRepository = queueRepository {
+        _queueRepository = queueRepository,
+        _syncCycleTimeout =
+            syncCycleTimeout ?? const Duration(minutes: 30) {
     _pendingSubscription = _queueRepository.watchPending().listen((snapshot) {
       _emitState(_state.value.copyWith(pendingCount: snapshot.totalCount));
     });
@@ -33,6 +39,7 @@ class DefaultOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
 
   final OccurrenceSyncService _syncService;
   final SyncQueueRepository _queueRepository;
+  final Duration _syncCycleTimeout;
 
   final ValueNotifier<OccurrenceSyncCoordinatorState> _state =
       ValueNotifier(const OccurrenceSyncCoordinatorState());
@@ -51,8 +58,18 @@ class DefaultOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
     _emitState(_state.value.copyWith(status: OccurrenceSyncStatus.syncing));
 
     try {
-      final result = await _syncService.processPending();
-      final success = result.failed == 0 && !result.unauthorized;
+      final result = await _syncService.processPending().timeout(
+        _syncCycleTimeout,
+        onTimeout: () => const OccurrenceSyncResult(
+          synced: 0,
+          failed: 0,
+          skipped: 0,
+          hadNetworkFailure: true,
+        ),
+      );
+      final success = result.failed == 0 &&
+          !result.unauthorized &&
+          !result.hadNetworkFailure;
       _emitState(
         _state.value.copyWith(
           status: OccurrenceSyncStatus.idle,
@@ -64,7 +81,9 @@ class DefaultOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
                 ? null
                 : result.unauthorized
                     ? 'Sessão expirada'
-                    : '${result.failed} item(ns) falharam',
+                    : result.hadNetworkFailure
+                        ? 'Conexão indisponível'
+                        : '${result.failed} item(ns) falharam',
           ),
         ),
       );
@@ -105,6 +124,14 @@ class DefaultOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
   @override
   void clearSyncProgress() {
     _emitState(_state.value.copyWith(clearSyncProgress: true));
+  }
+
+  @override
+  void recoverFromExternalTimeout() {
+    _running = false;
+    if (_state.value.status == OccurrenceSyncStatus.syncing) {
+      _emitState(_state.value.copyWith(status: OccurrenceSyncStatus.idle));
+    }
   }
 
   void _emitState(OccurrenceSyncCoordinatorState next) {

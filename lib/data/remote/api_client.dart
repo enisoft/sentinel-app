@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../../core/config/app_config.dart';
+import '../../core/network/initial_contact_retry.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import '../../domain/models/operator_profile.dart';
 import 'api_exception.dart';
@@ -17,21 +18,34 @@ class ApiClient {
     required AppConfig config,
     required AuthGateway authGateway,
     http.Client? httpClient,
-    Duration requestTimeout = const Duration(seconds: 30),
+    Duration? requestTimeout,
+    Duration? initialContactTimeout,
+    Duration? initialContactRetryBackoff,
   })  : _baseUrl = config.apiBaseUrl,
         _auth = authGateway,
         _http = httpClient ?? http.Client(),
-        _requestTimeout = requestTimeout;
+        _requestTimeout = requestTimeout ?? const Duration(seconds: 30),
+        _initialContactTimeout = initialContactTimeout ??
+            Duration(seconds: config.syncInitialContactTimeoutSeconds),
+        _initialContactRetryBackoff = initialContactRetryBackoff ??
+            Duration(seconds: config.syncInitialContactRetryBackoffSeconds);
 
   final String _baseUrl;
   final AuthGateway _auth;
   final http.Client _http;
   final Duration _requestTimeout;
+  final Duration _initialContactTimeout;
+  final Duration _initialContactRetryBackoff;
 
-  Future<OperatorProfile> getMe() async {
-    final response = await _get('/me');
-    return OperatorProfile.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
+  Future<OperatorProfile> getMe() {
+    return withInitialContactRetry(
+      () async {
+        final response = await _get('/me', timeout: _initialContactTimeout);
+        return OperatorProfile.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+      },
+      backoff: _initialContactRetryBackoff,
     );
   }
 
@@ -76,11 +90,20 @@ class ApiClient {
     return InboxMessage.fromJson(data);
   }
 
-  Future<List<String>> postOccurrencesSync(Map<String, dynamic> body) async {
-    final response = await _post('/occurrences/sync', body);
-    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-    final data = decoded['data'] as Map<String, dynamic>;
-    return (data['ids'] as List<dynamic>).cast<String>();
+  Future<List<String>> postOccurrencesSync(Map<String, dynamic> body) {
+    return withInitialContactRetry(
+      () async {
+        final response = await _post(
+          '/occurrences/sync',
+          body,
+          timeout: _initialContactTimeout,
+        );
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = decoded['data'] as Map<String, dynamic>;
+        return (data['ids'] as List<dynamic>).cast<String>();
+      },
+      backoff: _initialContactRetryBackoff,
+    );
   }
 
   Future<CatalogDeltaResponse> _getCatalog(
@@ -96,14 +119,19 @@ class ApiClient {
     );
   }
 
-  Future<http.Response> _get(String path) {
+  Future<http.Response> _get(String path, {Duration? timeout}) {
     return _authorizedRequest(
       (uri, headers) => _http.get(uri, headers: headers),
       path,
+      timeout: timeout,
     );
   }
 
-  Future<http.Response> _post(String path, Map<String, dynamic> body) {
+  Future<http.Response> _post(
+    String path,
+    Map<String, dynamic> body, {
+    Duration? timeout,
+  }) {
     return _authorizedRequest(
       (uri, headers) => _http.post(
         uri,
@@ -112,6 +140,7 @@ class ApiClient {
       ),
       path,
       extraHeaders: const {'Content-Type': 'application/json'},
+      timeout: timeout,
     );
   }
 
@@ -119,6 +148,7 @@ class ApiClient {
     Future<http.Response> Function(Uri uri, Map<String, String> headers) send,
     String path, {
     Map<String, String> extraHeaders = const {},
+    Duration? timeout,
   }) async {
     final token = _auth.accessToken;
     if (token == null) {
@@ -137,7 +167,7 @@ class ApiClient {
 
     http.Response response;
     try {
-      response = await send(uri, headers).timeout(_requestTimeout);
+      response = await send(uri, headers).timeout(timeout ?? _requestTimeout);
     } on TimeoutException {
       throw ApiException(
         408,

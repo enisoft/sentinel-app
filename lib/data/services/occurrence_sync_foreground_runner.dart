@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../platform/sync_foreground_platform.dart';
 import '../../core/sync/sync_foreground_notification_text.dart';
 import '../repositories/sync_queue_repository.dart';
@@ -13,13 +15,17 @@ class OccurrenceSyncForegroundRunner {
     required OccurrenceSyncCoordinator coordinator,
     required SyncQueueRepository queueRepository,
     required SyncForegroundPlatform platform,
+    Duration? drainCycleTimeout,
   })  : _coordinator = coordinator,
         _queueRepository = queueRepository,
-        _platform = platform;
+        _platform = platform,
+        _drainCycleTimeout =
+            drainCycleTimeout ?? const Duration(minutes: 30);
 
   final OccurrenceSyncCoordinator _coordinator;
   final SyncQueueRepository _queueRepository;
   final SyncForegroundPlatform _platform;
+  final Duration _drainCycleTimeout;
 
   Future<OccurrenceSyncResult?>? _activeDrain;
 
@@ -44,6 +50,8 @@ class OccurrenceSyncForegroundRunner {
     await _platform.requestNotificationPermission();
     await _platform.startForegroundService();
 
+    final deadline = DateTime.now().add(_drainCycleTimeout);
+
     try {
       OccurrenceSyncResult? aggregated;
       final initialTotal = (await _queueRepository.getPending()).totalCount;
@@ -52,6 +60,31 @@ class OccurrenceSyncForegroundRunner {
       _coordinator.reportSyncProgress(current: 1, total: initialTotal);
 
       while ((await _queueRepository.getPending()).totalCount > 0) {
+        if (DateTime.now().isAfter(deadline)) {
+          aggregated = (aggregated ??
+                  const OccurrenceSyncResult(
+                    synced: 0,
+                    failed: 0,
+                    skipped: 0,
+                  ))
+              .merge(
+            const OccurrenceSyncResult(
+              synced: 0,
+              failed: 0,
+              skipped: 0,
+              hadNetworkFailure: true,
+            ),
+          );
+          final pendingAfter = await _queueRepository.getPending();
+          await _platform.updateForegroundNotification(
+            title: SyncForegroundNotificationText.titleWaiting,
+            text: SyncForegroundNotificationText.waitingForConnection(
+              pendingAfter.totalCount,
+            ),
+          );
+          break;
+        }
+
         final pendingBefore = await _queueRepository.getPending();
         final remaining = pendingBefore.totalCount;
 
@@ -75,7 +108,48 @@ class OccurrenceSyncForegroundRunner {
           ),
         );
 
-        final result = await _coordinator.syncNow();
+        final timeLeft = deadline.difference(DateTime.now());
+        if (timeLeft <= Duration.zero) {
+          aggregated = (aggregated ??
+                  const OccurrenceSyncResult(
+                    synced: 0,
+                    failed: 0,
+                    skipped: 0,
+                  ))
+              .merge(
+            const OccurrenceSyncResult(
+              synced: 0,
+              failed: 0,
+              skipped: 0,
+              hadNetworkFailure: true,
+            ),
+          );
+          final pendingAfter = await _queueRepository.getPending();
+          await _platform.updateForegroundNotification(
+            title: SyncForegroundNotificationText.titleWaiting,
+            text: SyncForegroundNotificationText.waitingForConnection(
+              pendingAfter.totalCount,
+            ),
+          );
+          break;
+        }
+
+        var syncTimedOut = false;
+        final result = await _coordinator.syncNow().timeout(
+          timeLeft,
+          onTimeout: () {
+            syncTimedOut = true;
+            return const OccurrenceSyncResult(
+              synced: 0,
+              failed: 0,
+              skipped: 0,
+              hadNetworkFailure: true,
+            );
+          },
+        );
+        if (syncTimedOut) {
+          _coordinator.recoverFromExternalTimeout();
+        }
         if (result == null) break;
 
         aggregated = aggregated == null ? result : aggregated.merge(result);

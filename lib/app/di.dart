@@ -195,6 +195,7 @@ Future<void> _registerCore(
       () => DefaultOccurrenceSyncCoordinator(
         syncService: getIt(),
         queueRepository: getIt(),
+        syncCycleTimeout: Duration(minutes: config.syncDrainCycleTimeoutMinutes),
       ),
     );
   }
@@ -227,6 +228,7 @@ Future<void> _registerCore(
         coordinator: getIt(),
         queueRepository: getIt(),
         platform: getIt(),
+        drainCycleTimeout: Duration(minutes: config.syncDrainCycleTimeoutMinutes),
       ),
     );
   }

@@ -88,6 +88,14 @@ class FakeOccurrenceSyncCoordinator implements OccurrenceSyncCoordinator {
   }
 
   @override
+  void recoverFromExternalTimeout() {
+    running = false;
+    if (_state.value.status == OccurrenceSyncStatus.syncing) {
+      _state.value = _state.value.copyWith(status: OccurrenceSyncStatus.idle);
+    }
+  }
+
+  @override
   void dispose() {
     _state.dispose();
   }

@@ -4,6 +4,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentinel_app/core/capture/occurrence_lifecycle_status.dart';
 import 'package:sentinel_app/core/sync/occurrence_sync_coordinator_state.dart';
+import 'package:sentinel_app/core/sync/sync_foreground_notification_text.dart';
 import 'package:sentinel_app/data/fakes/fake_occurrence_sync_coordinator.dart';
 import 'package:sentinel_app/data/fakes/fake_sync_foreground_platform.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
@@ -123,5 +124,38 @@ void main() {
     expect(results[0]!.synced, 1);
     expect(results[1]!.synced, 1);
     expect(platform.startCallCount, 1);
+  });
+
+  test('drain cycle timeout ends stuck drain with network failure (ENI-105)',
+      () async {
+    await seedPendingOccurrence('occ-stuck');
+
+    final shortRunner = OccurrenceSyncForegroundRunner(
+      coordinator: coordinator,
+      queueRepository: queueRepo,
+      platform: platform,
+      drainCycleTimeout: const Duration(milliseconds: 50),
+    );
+
+    final gate = Completer<void>();
+    coordinator.onSyncNow = () async {
+      await gate.future;
+      return const OccurrenceSyncResult(synced: 1, failed: 0, skipped: 0);
+    };
+
+    final drainFuture = shortRunner.runIfPending();
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+
+    expect(platform.notificationUpdates.any(
+      (n) => n.title == SyncForegroundNotificationText.titleWaiting,
+    ), isTrue);
+
+    gate.complete();
+    final result = await drainFuture;
+
+    expect(result, isNotNull);
+    expect(result!.hadNetworkFailure, isTrue);
+    expect(coordinator.syncNowCallCount, greaterThanOrEqualTo(1));
+    expect(platform.stopCallCount, 0);
   });
 }

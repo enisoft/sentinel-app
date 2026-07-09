@@ -9,6 +9,7 @@ import 'package:sentinel_app/data/fakes/fake_auth_gateway.dart';
 import 'package:sentinel_app/data/fakes/fake_media_uploader.dart';
 import 'package:sentinel_app/data/fakes/fake_sync_gateway.dart';
 import 'package:sentinel_app/data/local/app_database.dart';
+import 'package:sentinel_app/data/remote/media_upload_exception.dart';
 import 'package:sentinel_app/data/repositories/occurrence_repository.dart';
 import 'package:sentinel_app/data/repositories/sync_queue_repository.dart';
 import 'package:sentinel_app/data/services/occurrence_sync_coordinator.dart';
@@ -121,7 +122,7 @@ void main() {
     expect(coordinator.state.value.lastResult?.success, isFalse);
     expect(
       coordinator.state.value.lastResult?.errorMessage,
-      contains('1 item(ns) falharam'),
+      'Conexão indisponível',
     );
     expect(coordinator.state.value.status, OccurrenceSyncStatus.idle);
   });
@@ -168,5 +169,54 @@ void main() {
     expect(coordinator.state.value.syncProgressCurrent, isNull);
     expect(coordinator.state.value.syncProgressTotal, isNull);
     expect(coordinator.state.value.isSyncInProgress, isFalse);
+  });
+
+  test('stall upload failure exits syncing with network message (ENI-105)', () async {
+    await seedOccurrence(id: 'occ-stall', withMedia: true);
+    fakeMediaUploader.uploadException = MediaUploadException(
+      null,
+      'Upload parado por inatividade de rede',
+    );
+
+    final states = <OccurrenceSyncCoordinatorState>[];
+    coordinator.state.addListener(() => states.add(coordinator.state.value));
+
+    final result = await coordinator.syncNow();
+
+    expect(result, isNotNull);
+    expect(result!.hadNetworkFailure, isTrue);
+    expect(coordinator.state.value.status, OccurrenceSyncStatus.idle);
+    expect(coordinator.state.value.lastResult?.success, isFalse);
+    expect(
+      coordinator.state.value.lastResult?.errorMessage,
+      'Conexão indisponível',
+    );
+    expect(states.last.status, OccurrenceSyncStatus.idle);
+    expect(states.map((s) => s.status), contains(OccurrenceSyncStatus.syncing));
+  });
+
+  test('sync cycle timeout exits syncing with network failure (ENI-105)', () async {
+    final slowCoordinator = DefaultOccurrenceSyncCoordinator(
+      syncService: syncService,
+      queueRepository: queueRepo,
+      syncCycleTimeout: const Duration(milliseconds: 50),
+    );
+
+    await seedOccurrence(id: 'occ-slow-cycle', withMedia: true);
+
+    final gate = Completer<void>();
+    fakeMediaUploader.onUpload = (_) => gate.future;
+
+    final syncFuture = slowCoordinator.syncNow();
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    gate.complete();
+    final result = await syncFuture;
+
+    expect(result, isNotNull);
+    expect(result!.hadNetworkFailure, isTrue);
+    expect(slowCoordinator.state.value.status, OccurrenceSyncStatus.idle);
+    expect(slowCoordinator.state.value.lastResult?.success, isFalse);
+
+    slowCoordinator.dispose();
   });
 }

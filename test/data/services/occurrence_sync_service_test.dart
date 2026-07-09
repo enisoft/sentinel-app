@@ -138,6 +138,22 @@ void main() {
     );
   });
 
+  test('stall network failure sets hadNetworkFailure (ENI-105)', () async {
+    await seedOccurrence(id: 'occ-stall-net', withMedia: true);
+    fakeMediaUploader.uploadException = MediaUploadException(
+      null,
+      'Upload parado por inatividade de rede',
+    );
+
+    final result = await service.processPending();
+
+    expect(result.hadNetworkFailure, isTrue);
+    expect(result.failed, 1);
+    final occurrence = await occurrenceRepo.getById('occ-stall-net');
+    expect(occurrence!.syncState, SyncState.failed);
+    expect(occurrence.failedPhase, SyncPhase.mediaUploading);
+  });
+
   test('media upload exception records media_uploading phase and retries on next cycle',
       () async {
     await seedOccurrence(id: 'occ-upload-fail', withMedia: true);

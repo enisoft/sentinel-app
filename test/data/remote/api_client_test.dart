@@ -147,7 +147,7 @@ void main() {
       );
 
       expect(
-        () => client.getMe(),
+        () => client.getMessages(),
         throwsA(
           isA<ApiException>()
               .having((e) => e.statusCode, 'status', 408)
@@ -155,6 +155,124 @@ void main() {
               .having((e) => e.message, 'message', contains('Tempo esgotado')),
         ),
       );
+    });
+
+    test('initial contact timeout uses shorter limit on getMe', () async {
+      var attempts = 0;
+      final stopwatch = Stopwatch()..start();
+
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        initialContactTimeout: const Duration(milliseconds: 40),
+        initialContactRetryBackoff: const Duration(milliseconds: 20),
+        httpClient: MockClient((_) async {
+          attempts++;
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+          return http.Response('', 200);
+        }),
+      );
+
+      await expectLater(
+        () => client.getMe(),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 408)
+              .having((e) => e.isNetworkError, 'isNetworkError', isTrue),
+        ),
+      );
+
+      expect(attempts, 2);
+      expect(stopwatch.elapsed, lessThan(const Duration(milliseconds: 250)));
+      expect(stopwatch.elapsed, greaterThan(const Duration(milliseconds: 90)));
+    });
+
+    test('initial contact succeeds on second attempt without surfacing error',
+        () async {
+      var attempts = 0;
+
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(token: 'jwt-1'),
+        initialContactRetryBackoff: const Duration(milliseconds: 10),
+        httpClient: MockClient((request) async {
+          attempts++;
+          if (attempts == 1) {
+            throw const SocketException('down');
+          }
+          return http.Response(
+            jsonEncode({
+              'id': 'user-1',
+              'name': 'Operador',
+              'role': 'agente',
+              'municipality_id': 'mun-1',
+              'photo_path': null,
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final profile = await client.getMe();
+
+      expect(profile.id, 'user-1');
+      expect(attempts, 2);
+    });
+
+    test('initial contact does not retry when first attempt succeeds', () async {
+      var attempts = 0;
+
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(token: 'jwt-1'),
+        httpClient: MockClient((_) async {
+          attempts++;
+          return http.Response(
+            jsonEncode({
+              'id': 'user-1',
+              'name': 'Operador',
+              'role': 'agente',
+              'municipality_id': 'mun-1',
+              'photo_path': null,
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      await client.getMe();
+
+      expect(attempts, 1);
+    });
+
+    test('postOccurrencesSync retries once on network failure', () async {
+      var attempts = 0;
+
+      final client = ApiClient(
+        config: config,
+        authGateway: FakeAuthGateway(),
+        initialContactRetryBackoff: const Duration(milliseconds: 10),
+        httpClient: MockClient((_) async {
+          attempts++;
+          if (attempts == 1) {
+            throw http.ClientException('refused');
+          }
+          return http.Response(
+            jsonEncode({
+              'data': {'ids': ['occ-1']},
+            }),
+            200,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+
+      final ids = await client.postOccurrencesSync({'occurrences': []});
+
+      expect(ids, ['occ-1']);
+      expect(attempts, 2);
     });
 
     test('socket failure throws network ApiException', () async {

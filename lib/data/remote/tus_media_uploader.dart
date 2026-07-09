@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cross_file/cross_file.dart';
@@ -9,6 +10,8 @@ import '../../domain/gateways/auth_gateway.dart';
 import '../../domain/gateways/media_uploader.dart';
 import '../repositories/occurrence_repository.dart';
 import 'media_upload_exception.dart';
+import 'sentinel_tus_client.dart';
+import 'tus_upload_stall_guard.dart';
 
 /// Upload TUS resumable para Supabase Storage — único ponto que importa tus_client_dart.
 class TusMediaUploader implements MediaUploader {
@@ -16,9 +19,12 @@ class TusMediaUploader implements MediaUploader {
     required AppConfig config,
     required AuthGateway authGateway,
     required OccurrenceRepository occurrenceRepository,
+    Duration? stallTimeout,
   })  : _config = config,
         _auth = authGateway,
-        _occurrences = occurrenceRepository;
+        _occurrences = occurrenceRepository,
+        _stallTimeout = stallTimeout ??
+            Duration(seconds: config.tusUploadStallTimeoutSeconds);
 
   static const bucketName = 'sentinel-media';
   static const chunkSize = 6 * 1024 * 1024;
@@ -26,6 +32,7 @@ class TusMediaUploader implements MediaUploader {
   final AppConfig _config;
   final AuthGateway _auth;
   final OccurrenceRepository _occurrences;
+  final Duration _stallTimeout;
 
   Uri get _tusEndpoint => Uri.parse(
         '${_config.supabaseUrl.replaceAll(RegExp(r'/+$'), '')}/storage/v1/upload/resumable',
@@ -78,14 +85,24 @@ class TusMediaUploader implements MediaUploader {
 
     final storeDir = await _storeDirectoryFor(mediaId);
     final xFile = XFile(localPath);
-    final client = TusClient(
+    final client = SentinelTusClient(
       xFile,
+      stallTimeout: _stallTimeout,
       store: TusFileStore(storeDir),
       maxChunkSize: chunkSize,
       retries: 3,
       retryInterval: 2,
       retryScale: RetryScale.exponential,
     );
+
+    final guard = TusUploadStallGuard(
+      stallTimeout: _stallTimeout,
+      onStalled: () async {
+        await client.pauseUpload();
+        client.abort();
+      },
+    );
+    guard.start();
 
     try {
       await client.upload(
@@ -99,17 +116,35 @@ class TusMediaUploader implements MediaUploader {
           'objectName': objectPath,
           'contentType': mimeType,
         },
+        onProgress: (_, __) => guard.onProgress(),
       );
     } on ProtocolException catch (e) {
+      if (guard.didStall) {
+        throw MediaUploadException(null, 'Upload parado por inatividade de rede');
+      }
       final code = e.code;
       if (code == 401) {
         throw MediaUploadException(401, e.message);
       }
       throw MediaUploadException(code, e.message);
     } on SocketException catch (e) {
+      if (guard.didStall) {
+        throw MediaUploadException(null, 'Upload parado por inatividade de rede');
+      }
       throw MediaUploadException(null, e.message);
     } on HttpException catch (e) {
+      if (guard.didStall) {
+        throw MediaUploadException(null, 'Upload parado por inatividade de rede');
+      }
       throw MediaUploadException(null, e.message);
+    } catch (e) {
+      if (guard.didStall) {
+        throw MediaUploadException(null, 'Upload parado por inatividade de rede');
+      }
+      rethrow;
+    } finally {
+      guard.stop();
+      client.abort();
     }
   }
 

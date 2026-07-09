@@ -7,6 +7,10 @@ class AppConfig {
     required this.supabaseAnonKey,
     required this.apiBaseUrl,
     this.syncDebugUploadDelaySeconds = 0,
+    this.tusUploadStallTimeoutSeconds = 25,
+    this.syncDrainCycleTimeoutMinutes = 30,
+    this.syncInitialContactTimeoutSeconds = 10,
+    this.syncInitialContactRetryBackoffSeconds = 3,
   });
 
   final String supabaseUrl;
@@ -15,6 +19,18 @@ class AppConfig {
 
   /// Atraso artificial antes do upload TUS (só dev). 0 = desligado.
   final int syncDebugUploadDelaySeconds;
+
+  /// Sem bytes/progresso TUS por este intervalo → aborta upload (ENI-105).
+  final int tusUploadStallTimeoutSeconds;
+
+  /// Teto de duração de um ciclo de drain de sync (ENI-105).
+  final int syncDrainCycleTimeoutMinutes;
+
+  /// Timeout do primeiro contato HTTP (GET /me, POST /occurrences/sync) — ENI-105.
+  final int syncInitialContactTimeoutSeconds;
+
+  /// Backoff entre tentativas de primeiro contato — ENI-105.
+  final int syncInitialContactRetryBackoffSeconds;
 
   static Future<AppConfig> load() async {
     try {
@@ -32,6 +48,16 @@ class AppConfig {
       supabaseAnonKey: supabaseAnonKey,
       apiBaseUrl: apiBaseUrl,
       syncDebugUploadDelaySeconds: _optionalInt('SYNC_DEBUG_UPLOAD_DELAY_SECONDS'),
+      tusUploadStallTimeoutSeconds:
+          _optionalIntWithDefault('TUS_UPLOAD_STALL_TIMEOUT_SECONDS', 25),
+      syncDrainCycleTimeoutMinutes:
+          _optionalIntWithDefault('SYNC_DRAIN_CYCLE_TIMEOUT_MINUTES', 30),
+      syncInitialContactTimeoutSeconds:
+          _optionalIntWithDefault('SYNC_INITIAL_CONTACT_TIMEOUT_SECONDS', 10),
+      syncInitialContactRetryBackoffSeconds: _optionalIntWithDefault(
+        'SYNC_INITIAL_CONTACT_RETRY_BACKOFF_SECONDS',
+        3,
+      ),
     );
   }
 
@@ -43,16 +69,49 @@ class AppConfig {
           _requireFromMap(values, 'API_BASE_URL').replaceAll(RegExp(r'/+$'), ''),
       syncDebugUploadDelaySeconds:
           _optionalIntFromMap(values, 'SYNC_DEBUG_UPLOAD_DELAY_SECONDS'),
+      tusUploadStallTimeoutSeconds: _optionalIntWithDefaultFromMap(
+        values,
+        'TUS_UPLOAD_STALL_TIMEOUT_SECONDS',
+        25,
+      ),
+      syncDrainCycleTimeoutMinutes: _optionalIntWithDefaultFromMap(
+        values,
+        'SYNC_DRAIN_CYCLE_TIMEOUT_MINUTES',
+        30,
+      ),
+      syncInitialContactTimeoutSeconds: _optionalIntWithDefaultFromMap(
+        values,
+        'SYNC_INITIAL_CONTACT_TIMEOUT_SECONDS',
+        10,
+      ),
+      syncInitialContactRetryBackoffSeconds: _optionalIntWithDefaultFromMap(
+        values,
+        'SYNC_INITIAL_CONTACT_RETRY_BACKOFF_SECONDS',
+        3,
+      ),
     );
   }
 
   static int _optionalInt(String key) =>
       _optionalIntFromMap(dotenv.env, key);
 
+  static int _optionalIntWithDefault(String key, int defaultValue) =>
+      _optionalIntWithDefaultFromMap(dotenv.env, key, defaultValue);
+
   static int _optionalIntFromMap(Map<String, String?> values, String key) {
     final raw = values[key]?.trim();
     if (raw == null || raw.isEmpty) return 0;
     return int.tryParse(raw) ?? 0;
+  }
+
+  static int _optionalIntWithDefaultFromMap(
+    Map<String, String?> values,
+    String key,
+    int defaultValue,
+  ) {
+    final raw = values[key]?.trim();
+    if (raw == null || raw.isEmpty) return defaultValue;
+    return int.tryParse(raw) ?? defaultValue;
   }
 
   static String _require(String key) {
