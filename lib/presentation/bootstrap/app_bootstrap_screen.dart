@@ -34,18 +34,20 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
   Future<void> _runBootstrap() async {
     setState(() => _loading = true);
 
-    await _auth.tryRefreshSessionSilently();
+    final refresh = await _auth.tryRefreshSessionSilently();
 
     final service = getIt<BootstrapService>();
 
     try {
-      final result = await service.run();
+      final result = await service.run(
+        serverUnreachable: refresh.serverUnreachable,
+      );
       if (!mounted) return;
 
       setState(() => _result = result);
     } on ApiException catch (e) {
       if (e.isUnauthorized) {
-        if (await _auth.tryRefreshSessionSilently()) {
+        if ((await _auth.tryRefreshSessionSilently()).refreshed) {
           try {
             final result = await service.run();
             if (!mounted) return;

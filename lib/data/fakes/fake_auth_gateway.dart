@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../core/auth/silent_refresh_result.dart';
 import '../../core/network/network_reachability.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import 'fake_network_reachability.dart';
@@ -32,6 +33,8 @@ class FakeAuthGateway implements AuthGateway {
   FakeNetworkReachability get network => _network as FakeNetworkReachability;
 
   bool refreshSucceeds = true;
+  bool simulateRefreshServerUnreachable = false;
+  Duration refreshDelay = Duration.zero;
 
   @override
   Stream<bool> get sessionStream => _sessionController.stream;
@@ -68,12 +71,24 @@ class FakeAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<bool> tryRefreshSessionSilently() async {
-    if (!await hasPersistedSession() || !refreshSucceeds) return false;
+  Future<SilentRefreshResult> tryRefreshSessionSilently() async {
+    if (refreshDelay > Duration.zero) {
+      await Future<void>.delayed(refreshDelay);
+    }
+    if (!await hasPersistedSession()) {
+      return const SilentRefreshResult(refreshed: false);
+    }
+    if (simulateRefreshServerUnreachable) {
+      return const SilentRefreshResult(
+        refreshed: false,
+        serverUnreachable: true,
+      );
+    }
+    if (!refreshSucceeds) return const SilentRefreshResult(refreshed: false);
     _signedIn = true;
     _sessionController.add(true);
     await _setAppAccess(true);
-    return true;
+    return const SilentRefreshResult(refreshed: true);
   }
 
   @override
@@ -83,7 +98,7 @@ class FakeAuthGateway implements AuthGateway {
   }) async {
     if (isNetworkError || statusCode != 401) return false;
     final refreshed = await tryRefreshSessionSilently();
-    if (refreshed) return false;
+    if (refreshed.refreshed) return false;
     if (!await _network.isOnline()) return false;
     return true;
   }

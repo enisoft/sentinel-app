@@ -114,4 +114,34 @@ void main() {
     expect(result.profileLoaded, isFalse);
     expect(result.catalogError, BootstrapMessages.offlineFirstAccess);
   });
+
+  test('serverUnreachable skips /me and returns offline without cache (ENI-105)',
+      () async {
+    final service = buildService(
+      MockClient((_) async {
+        fail('/me should not be called when serverUnreachable');
+      }),
+    );
+
+    final result = await service.run(serverUnreachable: true);
+
+    expect(result.profileLoaded, isFalse);
+    expect(result.catalogError, BootstrapMessages.offlineFirstAccess);
+  });
+
+  test('serverUnreachable with cached profile enters app without /me (ENI-105)',
+      () async {
+    await seedCachedProfile();
+
+    final service = buildService(
+      MockClient((_) async {
+        fail('/me should not be called when serverUnreachable');
+      }),
+    );
+
+    final result = await service.run(serverUnreachable: true);
+
+    expect(result.profileLoaded, isTrue);
+    expect(result.catalogSynced, isFalse);
+  });
 }

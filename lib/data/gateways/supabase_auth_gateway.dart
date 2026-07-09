@@ -1,7 +1,11 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+import 'package:gotrue/gotrue.dart' show AuthRetryableFetchException;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/auth/silent_refresh_result.dart';
 import '../../core/network/network_reachability.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import '../auth/secure_key_value_store.dart';
@@ -12,7 +16,9 @@ class SupabaseAuthGateway implements AuthGateway {
     this._client,
     this._sessionStore, {
     NetworkReachability? networkReachability,
-  }) : _network = networkReachability ?? DnsNetworkReachability() {
+    Duration? refreshTimeout,
+  })  : _network = networkReachability ?? DnsNetworkReachability(),
+        _refreshTimeout = refreshTimeout ?? const Duration(seconds: 10) {
     _canAccessApp = _client.auth.currentSession != null;
     _sessionSubscription = _client.auth.onAuthStateChange.listen(
       (event) => unawaited(_onAuthStateChange(event)),
@@ -23,6 +29,7 @@ class SupabaseAuthGateway implements AuthGateway {
   final SupabaseClient _client;
   final SecureKeyValueStore _sessionStore;
   final NetworkReachability _network;
+  final Duration _refreshTimeout;
 
   String? _loginNotice;
   bool _manualSignOut = false;
@@ -66,20 +73,45 @@ class SupabaseAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<bool> tryRefreshSessionSilently() async {
-    if (!await hasPersistedSession()) return false;
+  Future<SilentRefreshResult> tryRefreshSessionSilently() async {
+    if (!await hasPersistedSession()) {
+      return const SilentRefreshResult(refreshed: false);
+    }
     try {
-      final result = await _client.auth.refreshSession();
+      final result = await _client.auth.refreshSession().timeout(_refreshTimeout);
       final ok = result.session != null;
       if (ok) {
         _manualSignOut = false;
         await _setAppAccess(true);
       }
-      return ok;
-    } on Object {
-      return false;
+      return SilentRefreshResult(refreshed: ok);
+    } on TimeoutException {
+      return const SilentRefreshResult(
+        refreshed: false,
+        serverUnreachable: true,
+      );
+    } on Object catch (error) {
+      return SilentRefreshResult(
+        refreshed: false,
+        serverUnreachable: _isRefreshNetworkFailure(error),
+      );
     }
   }
+
+  static bool _isRefreshNetworkFailure(Object error) {
+    if (error is TimeoutException) return true;
+    if (error is SocketException) return true;
+    if (error is AuthRetryableFetchException) return true;
+    final message = error.toString().toLowerCase();
+    return message.contains('socketexception') ||
+        message.contains('clientexception') ||
+        message.contains('connection') ||
+        message.contains('network');
+  }
+
+  @visibleForTesting
+  static bool isRefreshNetworkFailureForTest(Object error) =>
+      _isRefreshNetworkFailure(error);
 
   @override
   Future<bool> shouldSignOutForUnauthorized({
@@ -88,7 +120,7 @@ class SupabaseAuthGateway implements AuthGateway {
   }) async {
     if (isNetworkError || statusCode != 401) return false;
     final refreshed = await tryRefreshSessionSilently();
-    if (refreshed) return false;
+    if (refreshed.refreshed) return false;
     if (!await _network.isOnline()) return false;
     return true;
   }

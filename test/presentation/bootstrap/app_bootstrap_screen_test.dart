@@ -128,6 +128,30 @@ void main() {
     expect(find.byKey(const Key('login_submit')), findsNothing);
   });
 
+  testWidgets('refresh serverUnreachable skips /me for fast offline (ENI-105)',
+      (tester) async {
+    auth.simulateRefreshServerUnreachable = true;
+    var meCalled = false;
+
+    await pumpAuthGate(
+      tester,
+      MockClient((request) async {
+        if (request.url.path.endsWith('/me')) {
+          meCalled = true;
+        }
+        return http.Response('', 404);
+      }),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(meCalled, isFalse);
+    expect(auth.canAccessApp, isTrue);
+    expect(find.text(BootstrapMessages.offlineFirstAccess), findsOneWidget);
+    expect(find.byKey(const Key('login_submit')), findsNothing);
+  });
+
   testWidgets('401 on /me ends loading and shows session expired on login',
       (tester) async {
     auth.refreshSucceeds = false;

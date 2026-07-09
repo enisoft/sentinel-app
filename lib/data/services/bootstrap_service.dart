@@ -21,7 +21,22 @@ class BootstrapService {
   final OperatorProfileRepository _profileRepo;
   final CatalogSyncService _catalogSync;
 
-  Future<BootstrapResult> run() async {
+  Future<BootstrapResult> run({bool serverUnreachable = false}) async {
+    if (serverUnreachable) {
+      final cached = await _profileRepo.getCached();
+      if (cached == null) {
+        return const BootstrapResult(
+          profileLoaded: false,
+          catalogSynced: false,
+          catalogError: BootstrapMessages.offlineFirstAccess,
+        );
+      }
+      return const BootstrapResult(
+        profileLoaded: true,
+        catalogSynced: false,
+      );
+    }
+
     try {
       await _profileRepo.fetchAndCache();
     } on ApiException catch (e) {

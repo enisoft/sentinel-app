@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config/app_config.dart';
+import '../core/auth/silent_refresh_result.dart';
 import '../core/network/network_reachability.dart';
 import '../data/auth/secure_gotrue_async_storage.dart';
 import '../data/auth/secure_key_value_store.dart';
@@ -151,6 +152,7 @@ Future<void> _registerCore(
         Supabase.instance.client,
         getIt<SecureKeyValueStore>(),
         networkReachability: getIt<NetworkReachability>(),
+        refreshTimeout: Duration(seconds: config.syncInitialContactTimeoutSeconds),
       ),
     );
   }
@@ -300,7 +302,8 @@ class _UnimplementedAuthGateway implements AuthGateway {
   Future<bool> hasPersistedSession() async => false;
 
   @override
-  Future<bool> tryRefreshSessionSilently() async => false;
+  Future<SilentRefreshResult> tryRefreshSessionSilently() async =>
+      const SilentRefreshResult(refreshed: false);
 
   @override
   Future<bool> shouldSignOutForUnauthorized({

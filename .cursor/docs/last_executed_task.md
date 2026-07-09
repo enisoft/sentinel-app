@@ -83,6 +83,249 @@ Push/Done após G86.
 
 ---
 
+# ENI-105 (ajuste 2) — timeout no refresh de sessão Supabase no cold start
+
+**Tipo:** Resiliência de sync / auth cold start  
+**Data:** 2026-07-09  
+**Branch:** `main` (commit local)
+
+---
+
+## Objetivo
+
+`tryRefreshSessionSilently()` chamava `POST /auth/v1/token` sem timeout (~20–25s antes do `/me`). Total ~45s. Calibrar refresh + fail-early no bootstrap.
+
+---
+
+## Implementação
+
+| # | Item | Estado |
+|---|------|--------|
+| 1 | `refreshSession().timeout(SYNC_INITIAL_CONTACT_TIMEOUT_SECONDS)` no `SupabaseAuthGateway` | **Feito** |
+| 2 | Timeout/rede → `SilentRefreshResult(serverUnreachable: true)` — **não desloga** (ENI-84) | **Feito** |
+| 3 | `BootstrapService.run(serverUnreachable:)` pula `/me` e catálogo — decisão offline imediata | **Feito** |
+| 4 | `AppBootstrapScreen` propaga `serverUnreachable` do refresh pro bootstrap | **Feito** |
+| 5 | Refresh online rápido → fluxo normal inalterado | **Feito** |
+
+### Tempos esperados (servidor OFF)
+
+| Cenário | Antes | Depois |
+|---------|-------|--------|
+| Sem perfil em cache | ~45s (refresh ~22s + /me ~23s) | **~10s** (só refresh timeout → fail-early) |
+| Com perfil em cache (ENI-84) | ~45s+ | **~10s** (refresh timeout → Home com cache, sem /me/catálogo) |
+
+### Arquivos alterados
+
+| Arquivo | Ação |
+|---------|------|
+| `lib/core/auth/silent_refresh_result.dart` | novo — resultado do refresh |
+| `lib/domain/gateways/auth_gateway.dart` | retorno `SilentRefreshResult` |
+| `lib/data/gateways/supabase_auth_gateway.dart` | timeout + detecção rede |
+| `lib/data/fakes/fake_auth_gateway.dart` | `simulateRefreshServerUnreachable` |
+| `lib/data/services/bootstrap_service.dart` | fail-early `serverUnreachable` |
+| `lib/presentation/bootstrap/app_bootstrap_screen.dart` | propaga flag |
+| `lib/app/di.dart` | injeta `refreshTimeout` do config |
+| `test/data/gateways/supabase_auth_gateway_refresh_test.dart` | novo |
+| `test/data/services/bootstrap_service_test.dart` | fail-early |
+| `test/presentation/bootstrap/app_bootstrap_screen_test.dart` | skip /me |
+
+---
+
+## Testes
+
+```
+flutter test
+00:11 +244: All tests passed!
+```
+
+Cobertura ajuste 2:
+- refresh `serverUnreachable` → bootstrap sem chamar `/me`;
+- perfil em cache + `serverUnreachable` → entra no app;
+- detecção de falha de rede no refresh;
+- ENI-84: `canAccessApp` preservado, sem login.
+
+Status: **244/244 verdes**.
+
+---
+
+## Verificação manual (pendente — G86)
+
+1. Servidor OFF → "sem acesso" em ~10s (não 45s). Não desloga.
+2. Servidor ON → refresh/login normais.
+3. Modo avião → captura funciona (ENI-84).
+
+---
+
+## Commit
+
+```
+fix: timeout no refresh de sessao Supabase no cold start (ENI-105)
+```
+
+Push/Done após G86 (medir tempo real).
+
+---
+
+## Diag — 50s no cold start (esperado 23s)
+
+**Tipo:** Investigação read-only (sem alteração de código)  
+**Data:** 2026-07-09  
+**Sintoma:** Device G86, servidor OFF, ~45s até "Sem acesso ao servidor" (esperado ~23s pós-ENI-105).
+
+### Conclusão (TL;DR)
+
+Os **~23s** do ENI-105 cobrem **somente** o GET `/me` (10s + 3s backoff + 10s). No cold start real há um passo **anterior e bloqueante** que o ajuste **não calibrou**: `tryRefreshSessionSilently()` → `POST {SUPABASE_URL}/auth/v1/token` via GoTrue, **sem timeout** no nosso código nem no pacote `gotrue`. Esse request pode pendurar ~20–25s (TCP/OS no device) **antes** do `/me` sequer começar.
+
+**Soma que explica ~45s:**
+
+| # | Passo | Arquivo:linha | Timeout configurado | Tempo estimado (servidor OFF) |
+|---|-------|---------------|---------------------|-------------------------------|
+| 0 | `POST /auth/v1/token` (refresh sessão Supabase) | `app_bootstrap_screen.dart:37` → `supabase_auth_gateway.dart:72` → `gotrue fetch.dart:167` | **Nenhum** (http cru) | **~20–25s** |
+| 1 | `GET /me` tentativa 1 | `api_client.dart:43,170` | 10s (`_initialContactTimeout`) | até **10s** |
+| 2 | backoff retry | `initial_contact_retry.dart:26` | 3s fixo | **3s** |
+| 3 | `GET /me` tentativa 2 | `initial_contact_retry.dart:27` → `api_client.dart:43` | 10s | até **10s** |
+| | **Total** | | | **~43–48s** |
+
+O cálculo de ~23s do ENI-105 estava correto **para o `/me` isolado**, mas ignora o passo 0.
+
+---
+
+### 1. Sequência EXATA no cold start (servidor OFF, sem perfil em cache)
+
+Pré-requisito: sessão persistida (`hasPersistedSession` = true) → `AuthGate` mostra `AppBootstrapScreen` (`auth_gate.dart:28-31`). Sem sessão → `LoginScreen` (outro fluxo).
+
+```
+main.dart:8                    configureDependencies() — Supabase.initialize (local; sem HTTP bloqueante pro bootstrap)
+auth_gate.dart:31              AppBootstrapScreen monta
+app_bootstrap_screen.dart:37   await _auth.tryRefreshSessionSilently()     ← PASSO 0 (Supabase)
+app_bootstrap_screen.dart:42   await service.run()                         ← BootstrapService
+bootstrap_service.dart:26      await _profileRepo.fetchAndCache()
+operator_profile_repository.dart:35   await _api.getMe()                   ← PASSO 1–3 (/me + retry)
+bootstrap_service.dart:30-35   getCached() == null → offlineFirstAccess    ← dispara mensagem
+app_bootstrap_screen.dart:45   setState(_result)
+app_bootstrap_screen.dart:72   _loading = false → exibe erro
+```
+
+**Não executado neste caminho** (perfil nunca carrega):
+- `bootstrap_service.dart:43` `catalogSync.syncAll()` — catálogo **só roda se `/me` OK**
+- `home_screen.dart:62` `_refreshMessagesSilently()` — mensagens **só após Home**
+
+---
+
+### 2. O `/me` usa timeout curto (10s) ou 30s?
+
+**Usa 10s.** Caminho ENI-105:
+
+```40:49:lib/data/remote/api_client.dart
+  Future<OperatorProfile> getMe() {
+    return withInitialContactRetry(
+      () async {
+        final response = await _get('/me', timeout: _initialContactTimeout);
+        ...
+      },
+      backoff: _initialContactRetryBackoff,
+    );
+  }
+```
+
+- `_initialContactTimeout` = `config.syncInitialContactTimeoutSeconds` (padrão **10**) — `api_client.dart:28-29`
+- `_requestTimeout` (30s) **não** se aplica ao `/me` porque `timeout:` explícito em `_authorizedRequest` — `api_client.dart:170`
+
+**Não há outro caminho** para `/me` no bootstrap: `operator_profile_repository.dart:35` chama `_api.getMe()` direto.
+
+---
+
+### 3. Bootstrap chama mais endpoints antes de "sem acesso"?
+
+**Não**, no caminho que exibe "Sem acesso ao servidor":
+
+```24:41:lib/data/services/bootstrap_service.dart
+  Future<BootstrapResult> run() async {
+    try {
+      await _profileRepo.fetchAndCache();          // só /me
+    } on ApiException catch (e) {
+      ...
+      if (cached == null) {
+        return BootstrapResult(..., catalogError: BootstrapMessages.offlineFirstAccess);
+        // ↑ RETURN aqui — catálogo NÃO é chamado
+      }
+    }
+    final catalogResult = await _catalogSync.syncAll();  // só se /me OK
+```
+
+**Hipótese catálogo/mensagens (~45s) descartada** para esta mensagem específica.
+
+**Caminho alternativo** (perfil **em cache**, servidor OFF) — UX diferente:
+1. Passo 0 refresh Supabase (~20–25s)
+2. `/me` falha mas `cached != null` → **continua**
+3. `GET /catalog/observables` com timeout **30s** (`api_client.dart:116` sem `timeout:` → `_requestTimeout`)
+4. Falha no 1º catálogo → `syncAll` captura exceção
+5. Usuário entra na **Home** com aviso de catálogo — **não** vê "Sem acesso ao servidor"
+
+Esse caminho poderia somar ~20+23+30 ≈ **73s**, mas com tela Home, não tela de erro.
+
+---
+
+### 4. `withInitialContactRetry` — uma vez ou multiplicado?
+
+**Uma vez, só no `/me`** (e em `postOccurrencesSync`, que **não** roda no bootstrap).
+
+```18:28:lib/core/network/initial_contact_retry.dart
+Future<T> withInitialContactRetry<T>(...) async {
+  try {
+    return await action();        // tentativa 1
+  } on Object catch (first) {
+    if (!isInitialContactRetryable(first)) rethrow;
+    await Future<void>.delayed(backoff);
+    return action();              // tentativa 2 (única)
+  }
+}
+```
+
+- **Não** envolve `tryRefreshSessionSilently`
+- **Não** envolve catálogo/mensagens
+- Segunda chamada a `service.run()` só no catch de **401** (`app_bootstrap_screen.dart:48-50`), não em falha de rede
+
+GoTrue `_refreshAccessToken` tem retry interno (`gotrue_client.dart:1248`), mas limitado a janela de 10s (`Constants.autoRefreshTickDuration`) — irrelevante se o HTTP **pendura** sem lançar exceção (half-open/TCP).
+
+---
+
+### 5. Onde dispara "Sem acesso ao servidor" — depois de qual request?
+
+**Depois do `/me` esgotar retry**, se **não há perfil em cache local**:
+
+```31:36:lib/data/services/bootstrap_service.dart
+        if (cached == null) {
+          return const BootstrapResult(
+            profileLoaded: false,
+            catalogSynced: false,
+            catalogError: BootstrapMessages.offlineFirstAccess,
+          );
+```
+
+Exibido em:
+
+```131:133:lib/presentation/bootstrap/app_bootstrap_screen.dart
+                Text(
+                  _result?.catalogError ?? 'Falha ao carregar perfil.',
+```
+
+**O operador NÃO precisa** que catálogo/mensagens falhem — **só o `/me`** (mais o tempo morto do refresh Supabase antes dele). A UI mostra "Sincronizando…" durante **todo** `_runBootstrap`, incluindo refresh + `/me`.
+
+Outro ponto com a **mesma mensagem** (401 sem cache): `app_bootstrap_screen.dart:93-94` — caminho auth, não rede.
+
+---
+
+### Candidato a ajuste (para decisão do PO — NÃO implementado)
+
+| Prioridade | O quê | Por quê |
+|------------|-------|---------|
+| **Alta** | Timeout curto em `tryRefreshSessionSilently` / `refreshSession` | Bloqueia ~20–25s **antes** do `/me`; fora do escopo do ENI-105 ajuste |
+| Baixa | Timeout curto em catálogo/mensagens | Não afeta tela "sem acesso"; afeta caminho com cache |
+| N/A | Stall TUS 25s | Não participa do cold start bootstrap |
+
+---
+
 # ENI-105 — timeout de inatividade no upload TUS (sync trava quando servidor some)
 
 **Tipo:** Resiliência de sync / upload  

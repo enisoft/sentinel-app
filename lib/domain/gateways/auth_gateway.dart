@@ -1,3 +1,5 @@
+import '../../core/auth/silent_refresh_result.dart';
+
 /// Contrato de autenticação — implementação via Supabase Auth.
 abstract class AuthGateway {
   /// Sessão Supabase ativa em memória (JWT válido ou refresh recente).
@@ -24,7 +26,7 @@ abstract class AuthGateway {
   Future<bool> hasPersistedSession();
 
   /// Tenta renovar JWT silenciosamente (ex.: ao reconectar).
-  Future<bool> tryRefreshSessionSilently();
+  Future<SilentRefreshResult> tryRefreshSessionSilently();
 
   /// `true` apenas para 401 real online após tentativa de refresh (ENI-84).
   Future<bool> shouldSignOutForUnauthorized({
