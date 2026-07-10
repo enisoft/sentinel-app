@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../../app/di.dart';
+import '../../app/theme.dart';
 import '../../domain/gateways/auth_gateway.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -64,69 +65,109 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Relato - Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Image.asset(
-                  'docs/favicon.png',
-                  width: 120,
-                  height: 120,
-                  semanticLabel: 'Relato',
+    // Tela de marca: sempre escura (carvão + amarelo-sinalização),
+    // independente do tema do sistema — casa com o splash.
+    final dark = RelatoTheme.dark();
+    return Theme(
+      data: dark,
+      child: Scaffold(
+        backgroundColor: RelatoColors.charcoal,
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset(
+                          'docs/favicon.png',
+                          width: 72,
+                          height: 72,
+                          semanticLabel: 'Relato',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Relato',
+                      style: dark.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1,
+                        color: RelatoColors.inkDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Registro de ocorrências em campo',
+                      style: dark.textTheme.bodyMedium?.copyWith(
+                        color: RelatoColors.inkMutedDark,
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+                    TextFormField(
+                      key: const Key('login_email'),
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'E-mail',
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      autocorrect: false,
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'Informe o e-mail'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      key: const Key('login_password'),
+                      controller: _passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'Senha',
+                      ),
+                      obscureText: true,
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Informe a senha' : null,
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        _error!,
+                        key: const Key('login_error'),
+                        style: TextStyle(color: dark.colorScheme.error),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    FilledButton(
+                      key: const Key('login_submit'),
+                      onPressed: _loading ? null : _onSubmit,
+                      child: _loading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Entrar'),
+                    ),
+                    const SizedBox(height: 26),
+                    Center(
+                      child: Text(
+                        'Acesso restrito a operadores autorizados',
+                        style: dark.textTheme.bodySmall?.copyWith(
+                          color: RelatoColors.inkMutedDark,
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 32),
-              TextFormField(
-                key: const Key('login_email'),
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'E-mail',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty ? 'Informe o e-mail' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                key: const Key('login_password'),
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Senha',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-                validator: (v) =>
-                    v == null || v.isEmpty ? 'Informe a senha' : null,
-              ),
-              if (_error != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  _error!,
-                  key: const Key('login_error'),
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 24),
-              FilledButton(
-                key: const Key('login_submit'),
-                onPressed: _loading ? null : _onSubmit,
-                child: _loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Entrar'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

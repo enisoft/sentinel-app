@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'di.dart';
+import 'theme.dart';
 import '../presentation/auth/auth_gate.dart';
 
 Future<void> bootstrapApp({required String envFile}) async {
@@ -16,10 +17,9 @@ class SentinelApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Relato',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: RelatoTheme.light(),
+      darkTheme: RelatoTheme.dark(),
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
     );
   }
