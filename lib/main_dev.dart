@@ -1,4 +1,3 @@
 import 'app/bootstrap.dart';
 
-/// Entrypoint legado — prefira `main_dev.dart` / `main_prod.dart` com `--flavor`.
 Future<void> main() => bootstrapApp(envFile: '.env.dev');

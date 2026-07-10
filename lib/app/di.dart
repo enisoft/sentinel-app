@@ -43,12 +43,12 @@ import '../domain/services/location_source.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> configureDependencies() async {
+Future<void> configureDependencies({String envFile = '.env'}) async {
   if (getIt.isRegistered<AppDatabase>()) {
     return;
   }
 
-  final config = await AppConfig.load();
+  final config = await AppConfig.load(fileName: envFile);
 
   final secureStore = FlutterSecureKeyValueStore();
   final legacyKey = legacySharedPrefsSessionKey(config.supabaseUrl);

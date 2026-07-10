@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="app_name">Relato</string>
     <string name="sync_foreground_channel_name">Sincronização Sentinel</string>
     <string name="sync_foreground_channel_description">Notificações enquanto ocorrências são sincronizadas em segundo plano.</string>
     <string name="sync_foreground_notification_title">Ocorrências pendentes</string>

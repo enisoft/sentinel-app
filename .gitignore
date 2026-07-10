@@ -2,6 +2,13 @@
 .env
 .env.*
 !.env.example
+!.env.dev.example
+!.env.prod.example
+
+# Android signing (upload key)
+android/key.properties
+android/*.jks
+*.jks
 
 # Dumps locais de banco (dispositivo / debug)
 *.db

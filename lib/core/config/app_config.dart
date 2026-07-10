@@ -32,11 +32,16 @@ class AppConfig {
   /// Backoff entre tentativas de primeiro contato — ENI-105.
   final int syncInitialContactRetryBackoffSeconds;
 
-  static Future<AppConfig> load() async {
+  static Future<AppConfig> load({String fileName = '.env'}) async {
     try {
-      await dotenv.load(fileName: '.env');
+      await dotenv.load(fileName: fileName);
     } on Object {
-      await dotenv.load(fileName: '.env.example');
+      final fallback = switch (fileName) {
+        '.env.dev' => '.env.dev.example',
+        '.env.prod' => '.env.prod.example',
+        _ => '.env.example',
+      };
+      await dotenv.load(fileName: fallback);
     }
 
     final supabaseUrl = _require('SUPABASE_URL');
