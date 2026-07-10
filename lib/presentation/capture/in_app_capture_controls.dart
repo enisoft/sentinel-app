@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../app/theme.dart';
 import '../../core/capture/video_recording_policy.dart';
 import '../../data/device/camera_permission_denied_exception.dart';
 import '../../data/device/device_camera_source.dart';
@@ -240,13 +241,13 @@ class _InAppCaptureControlsState extends State<InAppCaptureControls> {
           style: ButtonStyle(
             foregroundColor: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.selected)) {
-                return Colors.black87;
+                return RelatoColors.charcoal;
               }
               return Colors.white70;
             }),
             backgroundColor: WidgetStateProperty.resolveWith((states) {
               if (states.contains(WidgetState.selected)) {
-                return Colors.white;
+                return RelatoColors.signal;
               }
               return Colors.white24;
             }),
@@ -274,22 +275,37 @@ class _InAppCaptureControlsState extends State<InAppCaptureControls> {
             child: Container(
               width: 72,
               height: 72,
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-                color: _recording
-                    ? Colors.red
-                    : (_canPress ? Colors.white : Colors.white38),
+                border: Border.all(
+                  color: _recording
+                      ? Colors.red
+                      : (_canPress
+                          ? RelatoColors.signal
+                          : RelatoColors.signal.withValues(alpha: 0.35)),
+                  width: 4,
+                ),
               ),
-              child: _recording
-                  ? const Center(
-                      child: Icon(
-                        Icons.stop,
-                        color: Colors.white,
-                        size: 32,
-                      ),
-                    )
-                  : null,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _recording
+                      ? Colors.red
+                      : (_canPress
+                          ? RelatoColors.signal
+                          : RelatoColors.signal.withValues(alpha: 0.35)),
+                ),
+                child: _recording
+                    ? const Center(
+                        child: Icon(
+                          Icons.stop,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      )
+                    : null,
+              ),
             ),
           ),
         ),
