@@ -1,0 +1,58 @@
+---
+description: Incrementar versionCode e nota de versão em cada build prod
+globs: pubspec.yaml,android/**,docs/RELEASE_NOTES.md
+alwaysApply: false
+---
+
+# Build prod — versionCode e nota de versão
+
+Sempre que **gerar, preparar ou subir** um build **prod** (AAB/APK release, flavor `prod`, Play Console), faça **antes** do build:
+
+## 1. Incrementar versionCode
+
+- Editar `pubspec.yaml`: campo `version` no formato `MAJOR.MINOR.PATCH+BUILD`.
+- O número **após `+`** é o `versionCode` Android — **incrementar em +1** a cada novo AAB prod.
+- A Play Console **rejeita** upload com o mesmo `versionCode`.
+- `versionName` (antes do `+`) só muda quando houver release semântica acordada; o `versionCode` sempre sobe.
+
+**Exemplo:**
+
+```yaml
+# antes
+version: 1.0.0+2
+
+# depois (novo AAB prod)
+version: 1.0.0+3
+```
+
+## 2. Nota de versão
+
+Criar ou atualizar `docs/RELEASE_NOTES.md` (mais recente no topo) com:
+
+- `versionName` e `versionCode` (ex.: `1.0.0 (3)`)
+- Data (AAAA-MM-DD)
+- Bullets curtos do que mudou (fix, feature, breaking) — em português, texto pronto para colar na Play Console
+
+**Template:**
+
+```markdown
+## 1.0.0 (3) — 2026-07-10
+
+- Correção: permissão INTERNET no manifest principal (release sem rede).
+- ...
+```
+
+Se a tarefa tiver escopo fechado, incluir também um resumo em `.cursor/docs/last_executed_task.md`.
+
+## 3. Comando de build
+
+```powershell
+flutter build appbundle --flavor prod --release -t lib/main_prod.dart
+```
+
+## Checklist antes de subir
+
+- [ ] `versionCode` incrementado em `pubspec.yaml`
+- [ ] Entrada em `docs/RELEASE_NOTES.md` para esta versão
+- [ ] AAB gerado: `build/app/outputs/bundle/prodRelease/app-prod-release.aab`
+- [ ] Não commitar secrets (`.env.prod`, `key.properties`, `*.jks`)
