@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../app/theme.dart';
 import '../../core/auth/auth_messages.dart';
 import '../../core/bootstrap/bootstrap_messages.dart';
 import '../../data/remote/api_exception.dart';
@@ -118,15 +119,41 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       return const SizedBox.shrink();
     }
 
+    // Loading e erro continuam a tela do splash nativo (carvão + marca):
+    // sem flash claro entre o splash e a primeira tela do app.
     if (_loading) {
-      return const Scaffold(
+      return Scaffold(
+        backgroundColor: RelatoColors.charcoal,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Sincronizando...'),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset(
+                  'docs/favicon.png',
+                  width: 72,
+                  height: 72,
+                  semanticLabel: 'Relato',
+                ),
+              ),
+              const SizedBox(height: 28),
+              const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: RelatoColors.signal,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Sincronizando...',
+                style: TextStyle(
+                  color: RelatoColors.inkMutedDark,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -134,24 +161,48 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     }
 
     if (_result?.profileLoaded != true) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Sentinel')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _result?.catalogError ?? 'Falha ao carregar perfil.',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _runBootstrap,
-                  child: const Text('Tentar novamente'),
-                ),
-              ],
+      return Theme(
+        data: RelatoTheme.dark(),
+        child: Scaffold(
+          backgroundColor: RelatoColors.charcoal,
+          body: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      'docs/favicon.png',
+                      width: 72,
+                      height: 72,
+                      semanticLabel: 'Relato',
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Icon(
+                    Icons.cloud_off_outlined,
+                    size: 28,
+                    color: RelatoColors.inkMutedDark,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _result?.catalogError ?? 'Falha ao carregar perfil.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: RelatoColors.inkDark,
+                      fontSize: 14,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  FilledButton(
+                    onPressed: _runBootstrap,
+                    child: const Text('Tentar novamente'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
