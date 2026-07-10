@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sentinel — Login')),
+      appBar: AppBar(title: const Text('Relato - Login')),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Form(
@@ -73,6 +73,15 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: Image.asset(
+                  'docs/favicon.png',
+                  width: 120,
+                  height: 120,
+                  semanticLabel: 'Relato',
+                ),
+              ),
+              const SizedBox(height: 32),
               TextFormField(
                 key: const Key('login_email'),
                 controller: _emailController,

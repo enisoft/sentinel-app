@@ -1,0 +1,7 @@
+# Copie para android/key.properties (não commitar).
+# Caminho absoluto do sentinel-upload.jks no Windows — use barras normais ou escape \\.
+
+storeFile=C:/New Projects/sentinel-project/sentinel-app/android/sentinel-upload.jks
+storePassword=31314541
+keyPassword=31314541
+keyAlias=sentinel-upload
