@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
 import '../../core/capture/camera_zoom_levels.dart';
 
 /// Botões de nível de zoom no preview (ENI-58) — sem gesto de pinça/scroll.
@@ -111,18 +112,19 @@ class _ZoomLevelButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: selected ? Colors.white : Colors.black54,
+            color: selected ? RelatoColors.signal : Colors.black54,
             border: Border.all(
-              color: selected ? Colors.white : Colors.white54,
+              color: selected ? RelatoColors.signal : Colors.white54,
               width: 1.5,
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.black87 : Colors.white,
+              color: selected ? RelatoColors.charcoal : Colors.white,
               fontSize: 12,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ),

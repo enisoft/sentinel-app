@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../app/theme.dart';
 import '../../core/capture/occurrence_lifecycle_status.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
-import '../../core/sync/sync_foreground_notification_text.dart';
-import '../../core/sync/sync_pending_messages.dart';
 import '../../core/sync/sync_state.dart';
 import '../../data/local/app_database.dart';
 import '../../data/repositories/occurrence_repository.dart';
@@ -13,6 +12,8 @@ import '../../data/services/occurrence_sync_coordinator.dart';
 import '../../data/services/occurrence_sync_foreground_runner.dart';
 import '../../domain/gateways/auth_gateway.dart';
 import '../capture/occurrence_draft_form_screen.dart';
+import '../shared/status_chip.dart';
+import '../shared/sync_status_bar.dart';
 import 'occurrence_detail_screen.dart';
 
 /// Lista local de ocorrências + badge/botão de sync (ENI-49 / ENI-57).
@@ -140,122 +141,15 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
           child: ValueListenableBuilder<OccurrenceSyncCoordinatorState>(
             valueListenable: _syncCoordinator.state,
             builder: (context, syncState, _) {
-              final progressLabel = syncState.syncProgressCurrent != null &&
-                      syncState.syncProgressTotal != null
-                  ? SyncForegroundNotificationText.syncingProgress(
-                      current: syncState.syncProgressCurrent!,
-                      total: syncState.syncProgressTotal!,
-                    )
-                  : null;
-
-              return Column(
-                children: [
-                  if (_ownPendingCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Container(
-                        key: const Key('pending_sync_badge'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade700,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          SyncPendingMessages.ownPendingBadge(_ownPendingCount),
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                        ),
-                      ),
-                    ),
-                  if (_otherOperatorPendingCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Container(
-                        key: const Key('other_operator_pending_badge'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blueGrey.shade700,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          SyncPendingMessages.otherOperatorPending(
-                            _otherOperatorPendingCount,
-                          ),
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                  if (progressLabel != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              key: Key('sync_progress_indicator'),
-                              strokeWidth: 2,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            key: const Key('sync_progress_label'),
-                            progressLabel,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (syncState.lastResult != null &&
-                      !syncState.lastResult!.success)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        syncState.lastResult!.errorMessage ??
-                            'Falha na sincronização',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: Colors.redAccent),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.tonal(
-                      key: const Key('sync_now_button'),
-                      onPressed: syncState.isSyncInProgress ||
-                              syncState.pendingCount == 0
-                          ? null
-                          : _onSyncNow,
-                      child: Text(
-                        syncState.isSyncInProgress
-                            ? (progressLabel ?? 'Sincronizando...')
-                            : 'Sincronizar agora',
-                      ),
-                    ),
-                  ),
-                ],
+              return SyncStatusBar(
+                syncState: syncState,
+                ownPendingCount: _ownPendingCount,
+                otherOperatorPendingCount: _otherOperatorPendingCount,
+                onSyncNow: _onSyncNow,
               );
             },
           ),
@@ -266,11 +160,23 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
   }
 
   Widget _buildList(BuildContext context) {
+    final theme = Theme.of(context);
     if (_items.isEmpty) {
-      return const Center(
-        child: Text(
-          key: Key('occurrences_empty'),
-          'Nenhuma ocorrência ainda',
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.photo_camera_outlined,
+              size: 40,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              key: Key('occurrences_empty'),
+              'Nenhuma ocorrência ainda',
+            ),
+          ],
         ),
       );
     }
@@ -279,69 +185,100 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
       key: const Key('occurrences_list'),
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 88),
       itemCount: _items.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final occurrence = _items[index];
-        final shortId = occurrenceShortId(occurrence.id);
-        final isDraft = _isDraft(occurrence);
-        return ListTile(
-          key: Key('occurrence_item_${occurrence.id}'),
-          leading: CircleAvatar(
-            key: Key('occurrence_leading_${occurrence.id}'),
-            backgroundColor: isDraft
-                ? Colors.grey.shade300
-                : Colors.green.shade50,
-            child: Icon(
-              isDraft ? Icons.edit_note : Icons.check_circle_outline,
-              color: isDraft
-                  ? Colors.grey.shade700
-                  : Colors.green.shade700,
-              size: 22,
-            ),
-          ),
-          title: Text(_occurrenceTitle(occurrence)),
-          subtitle: Column(
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) =>
+          _buildCard(context, _items[index]),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, Occurrence occurrence) {
+    final theme = Theme.of(context);
+    final sync = theme.syncStatusColors;
+    final shortId = occurrenceShortId(occurrence.id);
+    final isDraft = _isDraft(occurrence);
+    final (chipFg, chipBg) = _statusChipColors(occurrence, sync);
+
+    return Material(
+      key: Key('occurrence_item_${occurrence.id}'),
+      color: theme.colorScheme.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: InkWell(
+        onTap: () => _onOccurrenceTap(occurrence),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_formatOccurredAt(occurrence.occurredAt)),
-              const SizedBox(height: 4),
-              Container(
-                key: Key('occurrence_id_badge_${occurrence.id}'),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: isDraft
-                      ? Colors.amber.shade50
-                      : Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(4),
-                  border: isDraft
-                      ? Border.all(color: Colors.amber.shade200)
-                      : null,
-                ),
-                child: Text(
-                  isDraft ? 'Rascunho · $shortId' : shortId,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _occurrenceTitle(occurrence),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  StatusChip(
+                    label: occurrenceListStatusLabel(occurrence),
+                    textKey: Key('occurrence_status_${occurrence.id}'),
+                    foreground: chipFg,
+                    background: chipBg,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(
+                    Icons.schedule,
+                    size: 13,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _formatOccurredAt(occurrence.occurredAt),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    key: Key('occurrence_id_badge_${occurrence.id}'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDraft
+                          ? sync.pendingContainer
+                          : theme.colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      isDraft ? 'Rascunho · $shortId' : shortId,
+                      style: theme.textTheme.labelSmall?.copyWith(
                         fontFamily: 'monospace',
                         color: isDraft
-                            ? Colors.amber.shade900
-                            : Colors.grey.shade700,
+                            ? sync.pending
+                            : theme.colorScheme.onSurfaceVariant,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
-                ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          isThreeLine: true,
-          trailing: Text(
-            key: Key('occurrence_status_${occurrence.id}'),
-            occurrenceListStatusLabel(occurrence),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: _statusColor(occurrence),
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-          onTap: () => _onOccurrenceTap(occurrence),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -363,18 +300,22 @@ class _OccurrencesTabState extends State<OccurrencesTab> {
     return '$d/$m/$y $h:$min';
   }
 
-  Color _statusColor(Occurrence occurrence) {
+  /// Par (texto, fundo) do chip de estado, a partir dos tokens semânticos.
+  (Color, Color) _statusChipColors(
+    Occurrence occurrence,
+    SyncStatusColors sync,
+  ) {
     if (occurrence.status == OccurrenceLifecycleStatus.draft) {
-      return Colors.grey.shade700;
+      return (sync.draft, sync.draftContainer);
     }
     return switch (occurrence.syncState) {
-      SyncState.synced => Colors.green.shade700,
-      SyncState.failed => Colors.redAccent,
+      SyncState.synced => (sync.synced, sync.syncedContainer),
+      SyncState.failed => (sync.failed, sync.failedContainer),
       SyncState.mediaUploading ||
       SyncState.mediaDone ||
       SyncState.jsonSyncing =>
-        Colors.blueGrey,
-      SyncState.localSaved => Colors.orange.shade800,
+        (sync.syncing, sync.syncingContainer),
+      SyncState.localSaved => (sync.pending, sync.pendingContainer),
     };
   }
 }

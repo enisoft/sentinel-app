@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../app/theme.dart';
 import '../../core/sync/occurrence_sync_coordinator_state.dart';
 import '../../core/sync/sync_pending_messages.dart';
 import '../../data/repositories/message_repository.dart';
@@ -148,12 +149,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final sync = Theme.of(context).syncStatusColors;
     return Scaffold(
       key: const Key('home_screen'),
       appBar: AppBar(
-        backgroundColor: widget.catalogSyncWarning != null
-            ? Colors.orange.shade900
-            : null,
         title: Text(
           widget.catalogSyncWarning != null
               ? 'Catálogo desatualizado'
@@ -164,12 +163,12 @@ class _HomeScreenState extends State<HomeScreen> {
               widget.onRetryCatalogSync != null)
             IconButton(
               key: const Key('retry_catalog_sync'),
-              icon: const Icon(Icons.refresh),
+              icon: Icon(Icons.refresh, color: sync.pending),
               onPressed: widget.onRetryCatalogSync,
             ),
           IconButton(
             key: const Key('settings_button'),
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined),
             onPressed: _openSettings,
           ),
           IconButton(
@@ -177,21 +176,45 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.logout),
             onPressed: _onLogout,
           ),
-
         ],
       ),
       body: Column(
         children: [
           if (widget.catalogSyncWarning != null)
-            MaterialBanner(
-              content: Text(widget.catalogSyncWarning!),
-              actions: [
-                if (widget.onRetryCatalogSync != null)
-                  TextButton(
-                    onPressed: widget.onRetryCatalogSync,
-                    child: const Text('Tentar novamente'),
-                  ),
-              ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                decoration: BoxDecoration(
+                  color: sync.pendingContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 16, color: sync.pending),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.catalogSyncWarning!,
+                        style: TextStyle(
+                          color: sync.pending,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    if (widget.onRetryCatalogSync != null)
+                      TextButton(
+                        onPressed: widget.onRetryCatalogSync,
+                        style: TextButton.styleFrom(
+                          foregroundColor: sync.pending,
+                        ),
+                        child: const Text('Tentar novamente'),
+                      ),
+                  ],
+                ),
+              ),
             ),
           Expanded(
             child: _tabIndex == 0
@@ -217,17 +240,17 @@ class _HomeScreenState extends State<HomeScreen> {
           return ValueListenableBuilder<int>(
             valueListenable: _messageRepository.unreadCount,
             builder: (context, unreadCount, _) {
-              return BottomNavigationBar(
+              return NavigationBar(
                 key: const Key('home_bottom_nav'),
-                currentIndex: _tabIndex,
-                onTap: (index) {
+                selectedIndex: _tabIndex,
+                onDestinationSelected: (index) {
                   setState(() => _tabIndex = index);
                   if (index == 1) {
                     _refreshMessagesSilently();
                   }
                 },
-                items: [
-                  BottomNavigationBarItem(
+                destinations: [
+                  NavigationDestination(
                     key: const Key('occurrences_tab'),
                     icon: Badge(
                       key: const Key('occurrences_tab_badge'),
@@ -240,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     label: 'Ocorrências',
                   ),
-                  BottomNavigationBarItem(
+                  NavigationDestination(
                     key: const Key('messages_tab'),
                     icon: Badge(
                       key: const Key('messages_tab_badge'),

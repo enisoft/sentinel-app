@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../app/di.dart';
+import '../../app/theme.dart';
 import '../../core/capture/video_recording_policy.dart';
 import '../../data/device/camera_permission_denied_exception.dart';
 import '../../data/device/device_camera_source.dart';
@@ -228,7 +229,10 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen>
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.grey.shade900,
+      backgroundColor: const Color(0xFF1A1810),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
@@ -289,11 +293,25 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen>
                         child: Container(
                           width: 72,
                           height: 72,
+                          padding: const EdgeInsets.all(5),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 4),
-                            color:
-                                _canInteract ? Colors.white : Colors.white38,
+                            border: Border.all(
+                              color: _canInteract
+                                  ? RelatoColors.signal
+                                  : RelatoColors.signal
+                                      .withValues(alpha: 0.35),
+                              width: 4,
+                            ),
+                          ),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _canInteract
+                                  ? RelatoColors.signal
+                                  : RelatoColors.signal
+                                      .withValues(alpha: 0.35),
+                            ),
                           ),
                         ),
                       ),
@@ -314,10 +332,21 @@ class _CaptureHomeScreenState extends State<CaptureHomeScreen>
               Positioned(
                 right: 24,
                 bottom: 56,
-                child: FilledButton(
+                child: FilledButton.icon(
                   key: const Key('finish_draft_button'),
                   onPressed: _onFinishDraft,
-                  child: const Text('Concluir'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: RelatoColors.signal,
+                    foregroundColor: RelatoColors.charcoal,
+                    minimumSize: const Size(0, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    textStyle: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  icon: const Icon(Icons.arrow_forward, size: 18),
+                  label: const Text('Concluir'),
                 ),
               ),
             ],
@@ -378,12 +407,21 @@ class _DraftMediaCartButton extends StatelessWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 56,
-              height: 56,
-              child: _MediaThumbnail(media: lastMedia),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: RelatoColors.signal.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(9),
+              child: SizedBox(
+                width: 56,
+                height: 56,
+                child: _MediaThumbnail(media: lastMedia),
+              ),
             ),
           ),
           Positioned(
@@ -393,15 +431,15 @@ class _DraftMediaCartButton extends StatelessWidget {
               key: const Key('draft_media_count'),
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.orange.shade700,
+                color: RelatoColors.signal,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 '$mediaCount',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: RelatoColors.charcoal,
                   fontSize: 12,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
@@ -434,7 +472,9 @@ class _DraftMediaCartSheet extends StatelessWidget {
               key: const Key('draft_media_cart_sheet'),
               'Mídias capturadas (${media.length})',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white,
+                    color: RelatoColors.inkDark,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
                   ),
             ),
             const SizedBox(height: 12),

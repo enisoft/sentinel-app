@@ -47,18 +47,27 @@ flutter_launcher_icons:
   adaptive_icon_foreground: docs/icon-relato-black-transparent-1024.png
   min_sdk_android: 21
 
+# Splash na identidade UX-Fable: carvão #12110A (mesmo ground do login/dark
+# theme) para transição contínua splash -> app. No Android 12+ o ícone ganha
+# o disco amarelo da marca, casando com o ícone adaptativo do launcher.
 flutter_native_splash:
-  color: "#000000"
+  color: "#12110A"
   image: docs/icon-adaptative-foreground-relato-1024.png
-  color_dark: "#000000"
+  color_dark: "#12110A"
   image_dark: docs/icon-adaptative-foreground-relato-1024.png
   android: true
   ios: false
+  # Android 12+ aplica mascara circular no icone do splash; a spec pede
+  # canvas 960px com conteudo dentro do circulo de 640px. O asset abaixo
+  # e gerado do glifo preto do launcher (500px, centrado) — nao usar a
+  # arte 2024px branca aqui: estoura a mascara e some no disco amarelo.
   android_12:
-    color: "#000000"
-    image: docs/icon-adaptative-foreground-relato-1024.png
-    color_dark: "#000000"
-    image_dark: docs/icon-adaptative-foreground-relato-1024.png
+    color: "#12110A"
+    image: docs/splash-icon-android12-960.png
+    icon_background_color: "#FFD51F"
+    color_dark: "#12110A"
+    image_dark: docs/splash-icon-android12-960.png
+    icon_background_color_dark: "#FFD51F"
 
 flutter:
   uses-material-design: true

@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../app/di.dart';
+import '../../app/theme.dart';
 import '../../core/messages/message_recipient_state.dart';
 import '../../core/messages/message_type.dart';
 import '../../data/repositories/message_repository.dart';
 import '../../domain/models/inbox_message.dart';
+import '../shared/status_chip.dart';
 import 'message_detail_screen.dart';
 
 /// Intervalo de polling enquanto a aba Mensagens está visível.
@@ -128,9 +130,15 @@ class _MessagesTabState extends State<MessagesTab> {
     if (items.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: 120),
-          Center(
+        children: [
+          const SizedBox(height: 120),
+          Icon(
+            Icons.inbox_outlined,
+            size: 40,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 10),
+          const Center(
             child: Text(
               key: Key('messages_empty'),
               'Nenhuma mensagem',
@@ -145,10 +153,10 @@ class _MessagesTabState extends State<MessagesTab> {
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final message = items[index];
-        return _MessageListTile(
+        return _MessageCard(
           message: message,
           onTap: () => _onMessageTap(message),
         );
@@ -157,8 +165,8 @@ class _MessagesTabState extends State<MessagesTab> {
   }
 }
 
-class _MessageListTile extends StatelessWidget {
-  const _MessageListTile({
+class _MessageCard extends StatelessWidget {
+  const _MessageCard({
     required this.message,
     required this.onTap,
   });
@@ -168,74 +176,130 @@ class _MessageListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final sync = theme.syncStatusColors;
     final isTarefa = MessageType.isTarefa(message.type);
     final isUnread = MessageRecipientState.isUnread(message.estado);
+    final author = message.author.trim();
+    final (statusFg, statusBg) = _statusChipColors(message.estado, sync);
 
-    return ListTile(
+    return Material(
       key: Key('message_item_${message.id}'),
-      tileColor: isTarefa ? Colors.indigo.shade50 : null,
-      leading: CircleAvatar(
-        key: Key('message_leading_${message.id}'),
-        backgroundColor: isTarefa
-            ? Colors.indigo.shade100
-            : isUnread
-                ? Colors.blue.shade50
-                : Colors.grey.shade200,
-        child: Icon(
-          isTarefa ? Icons.task_alt : Icons.mail_outline,
-          color: isTarefa
-              ? Colors.indigo.shade700
-              : isUnread
-                  ? Colors.blue.shade700
-                  : Colors.grey.shade700,
-          size: 22,
+      color: theme.colorScheme.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                key: Key('message_leading_${message.id}'),
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isTarefa
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.surfaceContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  isTarefa ? Icons.task_alt : Icons.mail_outline,
+                  color: isTarefa
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.onSurfaceVariant,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            message.displayTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight:
+                                  isUnread ? FontWeight.w800 : FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (isUnread) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: sync.syncing,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      author.isNotEmpty
+                          ? '$author · ${_formatCreatedAt(message.createdAt)}'
+                          : _formatCreatedAt(message.createdAt),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          key: Key('message_type_badge_${message.id}'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isTarefa
+                                ? theme.colorScheme.primary
+                                : sync.draftContainer,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            MessageType.listLabel(message.type),
+                            style: TextStyle(
+                              color: isTarefa
+                                  ? theme.colorScheme.onPrimary
+                                  : sync.draft,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        StatusChip(
+                          label:
+                              MessageRecipientState.listLabel(message.estado),
+                          textKey: Key('message_status_${message.id}'),
+                          foreground: statusFg,
+                          background: statusBg,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      title: Text(
-        message.displayTitle,
-        style: isUnread ? const TextStyle(fontWeight: FontWeight.w600) : null,
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (message.author.trim().isNotEmpty)
-            Text(message.author.trim()),
-          Text(_formatCreatedAt(message.createdAt)),
-          const SizedBox(height: 4),
-          Container(
-            key: Key('message_type_badge_${message.id}'),
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: isTarefa ? Colors.indigo.shade100 : Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: isTarefa
-                    ? Colors.indigo.shade200
-                    : Colors.blue.shade200,
-              ),
-            ),
-            child: Text(
-              MessageType.listLabel(message.type),
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: isTarefa
-                        ? Colors.indigo.shade900
-                        : Colors.blue.shade900,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
-          ),
-        ],
-      ),
-      isThreeLine: true,
-      trailing: Text(
-        key: Key('message_status_${message.id}'),
-        MessageRecipientState.listLabel(message.estado),
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: _statusColor(message.estado, isTarefa),
-              fontWeight: FontWeight.w600,
-            ),
-      ),
-      onTap: onTap,
     );
   }
 
@@ -249,14 +313,15 @@ class _MessageListTile extends StatelessWidget {
     return '$d/$m/$y $h:$min';
   }
 
-  Color _statusColor(String estado, bool isTarefa) {
+  /// Par (texto, fundo) do chip de estado da mensagem.
+  (Color, Color) _statusChipColors(String estado, SyncStatusColors sync) {
     return switch (estado) {
-      MessageRecipientState.enviada => Colors.blue.shade700,
-      MessageRecipientState.lida => Colors.grey.shade700,
-      MessageRecipientState.aceita => Colors.indigo.shade700,
-      MessageRecipientState.concluida => Colors.green.shade700,
-      MessageRecipientState.recusada => Colors.redAccent,
-      _ => isTarefa ? Colors.indigo.shade700 : Colors.grey.shade700,
+      MessageRecipientState.enviada => (sync.syncing, sync.syncingContainer),
+      MessageRecipientState.lida => (sync.draft, sync.draftContainer),
+      MessageRecipientState.aceita => (sync.pending, sync.pendingContainer),
+      MessageRecipientState.concluida => (sync.synced, sync.syncedContainer),
+      MessageRecipientState.recusada => (sync.failed, sync.failedContainer),
+      _ => (sync.draft, sync.draftContainer),
     };
   }
 }
