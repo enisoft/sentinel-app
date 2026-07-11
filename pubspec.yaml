@@ -57,12 +57,16 @@ flutter_native_splash:
   image_dark: docs/icon-adaptative-foreground-relato-1024.png
   android: true
   ios: false
+  # Android 12+ aplica mascara circular no icone do splash; a spec pede
+  # canvas 960px com conteudo dentro do circulo de 640px. O asset abaixo
+  # e gerado do glifo preto do launcher (500px, centrado) — nao usar a
+  # arte 2024px branca aqui: estoura a mascara e some no disco amarelo.
   android_12:
     color: "#12110A"
-    image: docs/icon-adaptative-foreground-relato-1024.png
+    image: docs/splash-icon-android12-960.png
     icon_background_color: "#FFD51F"
     color_dark: "#12110A"
-    image_dark: docs/icon-adaptative-foreground-relato-1024.png
+    image_dark: docs/splash-icon-android12-960.png
     icon_background_color_dark: "#FFD51F"
 
 flutter:
